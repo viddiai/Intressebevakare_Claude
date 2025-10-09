@@ -213,7 +213,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Target user does not exist" });
       }
 
+      // Get current lead state for audit log
+      const currentLead = await storage.getLead(req.params.id);
+      if (!currentLead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+
       const updatedLead = await storage.assignLead(req.params.id, validatedData.assignedToId);
+      
+      // Create audit log entry for reassignment
+      await storage.createAuditLog({
+        leadId: req.params.id,
+        userId: userId,
+        action: "REASSIGNED",
+        fromValue: currentLead.assignedToId || null,
+        toValue: validatedData.assignedToId,
+      });
+
       res.json(updatedLead);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
