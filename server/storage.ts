@@ -20,6 +20,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
   
   getLeads(filters?: {
@@ -75,6 +76,10 @@ export class DbStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(users.anlaggning, users.lastName);
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
@@ -154,7 +159,7 @@ export class DbStorage implements IStorage {
       throw new Error("Lead not found");
     }
 
-    const updateData: Partial<InsertLead> = { status: status as any };
+    const updateData: Partial<Lead> = { status: status as any };
     
     if (status === "KUND_KONTAKTAD" && !lead.firstContactAt) {
       updateData.firstContactAt = new Date();

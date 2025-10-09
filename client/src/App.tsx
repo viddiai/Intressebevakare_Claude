@@ -13,6 +13,7 @@ import Overview from "@/pages/Overview";
 import Dashboard from "@/pages/Dashboard";
 import LeadsList from "@/pages/LeadsList";
 import LeadDetail from "@/pages/LeadDetail";
+import SellerPools from "@/pages/SellerPools";
 
 function AuthenticatedRouter() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -46,6 +47,7 @@ function AuthenticatedRouter() {
               <Route path="/dashboard" component={Dashboard} />
               <Route path="/leads" component={LeadsList} />
               <Route path="/leads/:id" component={LeadDetail} />
+              <Route path="/seller-pools" component={SellerPools} />
               <Route component={NotFound} />
             </Switch>
           </main>

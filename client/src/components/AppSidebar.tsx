@@ -1,4 +1,4 @@
-import { Home, LayoutDashboard, ListFilter, Settings, Car, LogOut, User } from "lucide-react";
+import { Home, LayoutDashboard, ListFilter, Settings, Car, LogOut, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -20,26 +20,40 @@ const menuItems = [
     title: "Översikt",
     url: "/",
     icon: Home,
+    roles: ["MANAGER", "SALJARE"],
   },
   {
     title: "Mina Leads",
     url: "/leads",
     icon: ListFilter,
+    roles: ["MANAGER", "SALJARE"],
   },
   {
     title: "Dashboard",
     url: "/dashboard",
     icon: LayoutDashboard,
+    roles: ["MANAGER", "SALJARE"],
+  },
+  {
+    title: "Säljarpool",
+    url: "/seller-pools",
+    icon: Users,
+    roles: ["MANAGER"],
   },
   {
     title: "Inställningar",
     url: "/settings",
     icon: Settings,
+    roles: ["MANAGER", "SALJARE"],
   },
 ];
 
 export function AppSidebar() {
   const { user } = useAuth();
+
+  const visibleMenuItems = menuItems.filter((item) => 
+    item.roles.includes(user?.role || "SALJARE")
+  );
 
   const getUserInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -82,7 +96,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {visibleMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <a href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>

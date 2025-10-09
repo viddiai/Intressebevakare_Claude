@@ -7,11 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Mail, Phone, ExternalLink, Loader2, Plus, CheckCircle2, Circle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Mail, Phone, ExternalLink, Loader2, Plus, CheckCircle2, Circle, UserCog } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import type { Lead, LeadNote, LeadTask, AuditLog } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
+import type { Lead, LeadNote, LeadTask, AuditLog, User } from "@shared/schema";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
 
@@ -19,9 +21,11 @@ export default function LeadDetail() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const [noteContent, setNoteContent] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskDueDate, setTaskDueDate] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState("");
 
   const { data: lead, isLoading: leadLoading } = useQuery<Lead>({
     queryKey: [`/api/leads/${id}`],
@@ -40,6 +44,33 @@ export default function LeadDetail() {
   const { data: activity = [] } = useQuery<AuditLog[]>({
     queryKey: [`/api/leads/${id}/activity`],
     enabled: !!id,
+  });
+
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+    enabled: currentUser?.role === "MANAGER",
+  });
+
+  const reassignLeadMutation = useMutation({
+    mutationFn: async (assignedToId: string) => {
+      return await apiRequest("PATCH", `/api/leads/${id}/assign`, { assignedToId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/leads/${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/leads/${id}/activity`] });
+      toast({
+        title: "Lead omtilldelad",
+        description: "Leaden har tilldelats en ny säljare",
+      });
+      setSelectedUserId("");
+    },
+    onError: () => {
+      toast({
+        title: "Fel",
+        description: "Kunde inte tilldela lead",
+        variant: "destructive",
+      });
+    },
   });
 
   const createNoteMutation = useMutation({
@@ -231,6 +262,66 @@ export default function LeadDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {currentUser?.role === "MANAGER" && (
+        <Card data-testid="card-reassign">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCog className="w-5 h-5" />
+              Tilldela om lead
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Välj en säljare att tilldela denna lead till
+              </p>
+              <div className="flex gap-2">
+                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger className="flex-1" data-testid="select-user">
+                    <SelectValue placeholder="Välj säljare..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users
+                      .filter((user) => user.role === "SALJARE" && user.isActive)
+                      .map((user) => (
+                        <SelectItem key={user.id} value={user.id} data-testid={`select-user-${user.id}`}>
+                          {user.firstName} {user.lastName} ({user.anlaggning})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={() => {
+                    if (selectedUserId) {
+                      reassignLeadMutation.mutate(selectedUserId);
+                    }
+                  }}
+                  disabled={!selectedUserId || reassignLeadMutation.isPending}
+                  data-testid="button-reassign"
+                >
+                  {reassignLeadMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Tilldela"
+                  )}
+                </Button>
+              </div>
+            </div>
+            {lead.assignedToId && (
+              <div className="p-3 bg-muted rounded-md">
+                <p className="text-sm text-muted-foreground">
+                  Nuvarande tilldelning: <span className="font-medium text-foreground" data-testid="text-current-assignee">
+                    {users.find((u) => u.id === lead.assignedToId)
+                      ? `${users.find((u) => u.id === lead.assignedToId)?.firstName} ${users.find((u) => u.id === lead.assignedToId)?.lastName}`
+                      : "Okänd"}
+                  </span>
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card data-testid="card-notes">
