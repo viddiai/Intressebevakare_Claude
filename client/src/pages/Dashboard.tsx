@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import KpiCard from "@/components/KpiCard";
-import LeadChart from "@/components/LeadChart";
-import SourceTable from "@/components/SourceTable";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Loader2 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DashboardStats {
   totalLeads: number;
@@ -74,33 +73,80 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SourceTable
-          title="Lead-källor"
-          data={stats.leadsBySource}
-          columns={[
-            { key: 'source', header: 'Källa' },
-            { key: 'count', header: 'Antal' },
-          ]}
-        />
-        <SourceTable
-          title="Anläggningsfördelning"
-          data={stats.leadsByAnlaggning}
-          columns={[
-            { key: 'anlaggning', header: 'Anläggning' },
-            { key: 'count', header: 'Antal' },
-          ]}
-        />
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-6">Lead-källor</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={stats.leadsBySource}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" opacity={0.3} />
+              <XAxis 
+                dataKey="source" 
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              />
+              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  color: 'hsl(var(--foreground))'
+                }}
+              />
+              <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-6">Anläggningsfördelning</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={stats.leadsByAnlaggning}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" opacity={0.3} />
+              <XAxis 
+                dataKey="anlaggning" 
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              />
+              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  color: 'hsl(var(--foreground))'
+                }}
+              />
+              <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SourceTable
-          title="Statusfördelning"
-          data={statusDistribution}
-          columns={[
-            { key: 'status', header: 'Status' },
-            { key: 'count', header: 'Antal' },
-          ]}
-        />
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-6">Statusfördelning</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={statusDistribution}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" opacity={0.3} />
+              <XAxis 
+                dataKey="status" 
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                angle={-15}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  color: 'hsl(var(--foreground))'
+                }}
+              />
+              <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
         <Card className="p-6 flex flex-col justify-center">
           <div className="text-center space-y-4">
             <div className="text-6xl font-bold text-primary">{stats.totalLeads}</div>

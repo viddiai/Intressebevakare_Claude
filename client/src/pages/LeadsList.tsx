@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import LeadCard from "@/components/LeadCard";
 import FilterBar from "@/components/FilterBar";
 import StatusTabs from "@/components/StatusTabs";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import type { Lead } from "@shared/schema";
 
 export default function LeadsList() {
@@ -12,9 +14,32 @@ export default function LeadsList() {
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
+  const { toast } = useToast();
 
   const { data: leads, isLoading } = useQuery<Lead[]>({
     queryKey: ["/api/leads"],
+  });
+
+  const assignLeadMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      return await apiRequest(`/api/leads/${leadId}/assign`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      toast({
+        title: "Lead tilldelad",
+        description: "Leaden har tilldelats dig via round-robin",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Fel",
+        description: "Kunde inte tilldela lead",
+        variant: "destructive",
+      });
+    },
   });
 
   const filteredLeads = useMemo(() => {
@@ -106,8 +131,15 @@ export default function LeadsList() {
                 status={lead.status}
                 createdAt={lead.createdAt.toString().split('T')[0]}
                 vehicleLink={lead.vehicleLink}
-                onViewDetails={() => console.log("View details:", lead.id)}
-                onAssign={() => console.log("Assign lead:", lead.id)}
+                onViewDetails={() => {
+                  toast({
+                    title: "Lead detaljer",
+                    description: `Visar detaljer för ${lead.vehicleTitle}`,
+                  });
+                }}
+                onAssign={() => {
+                  assignLeadMutation.mutate(lead.id);
+                }}
               />
             );
           })
