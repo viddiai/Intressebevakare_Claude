@@ -7,6 +7,7 @@ import StatusTabs from "@/components/StatusTabs";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import type { Lead } from "@shared/schema";
 
 export default function LeadsList() {
@@ -15,6 +16,7 @@ export default function LeadsList() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const { data: leads, isLoading } = useQuery<Lead[]>({
     queryKey: ["/api/leads"],
@@ -82,7 +84,7 @@ export default function LeadsList() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Mina Leads</h1>
@@ -130,10 +132,7 @@ export default function LeadsList() {
                 createdAt={lead.createdAt.toString().split('T')[0]}
                 vehicleLink={lead.vehicleLink || undefined}
                 onViewDetails={() => {
-                  toast({
-                    title: "Lead detaljer",
-                    description: `Visar detaljer för ${lead.vehicleTitle}`,
-                  });
+                  setLocation(`/leads/${lead.id}`);
                 }}
                 onAssign={() => {
                   assignLeadMutation.mutate(lead.id);

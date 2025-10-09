@@ -12,6 +12,7 @@ import Landing from "@/pages/Landing";
 import Overview from "@/pages/Overview";
 import Dashboard from "@/pages/Dashboard";
 import LeadsList from "@/pages/LeadsList";
+import LeadDetail from "@/pages/LeadDetail";
 
 function AuthenticatedRouter() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -39,11 +40,12 @@ function AuthenticatedRouter() {
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <ThemeToggle />
           </header>
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto">
             <Switch>
               <Route path="/" component={Overview} />
               <Route path="/dashboard" component={Dashboard} />
               <Route path="/leads" component={LeadsList} />
+              <Route path="/leads/:id" component={LeadDetail} />
               <Route component={NotFound} />
             </Switch>
           </main>

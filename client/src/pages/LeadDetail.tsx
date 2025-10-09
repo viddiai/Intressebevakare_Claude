@@ -1,0 +1,388 @@
+import { useParams } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ArrowLeft, Mail, Phone, ExternalLink, Loader2, Plus, CheckCircle2, Circle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import { useLocation } from "wouter";
+import type { Lead, LeadNote, LeadTask, AuditLog } from "@shared/schema";
+import { format } from "date-fns";
+import { sv } from "date-fns/locale";
+
+export default function LeadDetail() {
+  const { id } = useParams<{ id: string }>();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [noteContent, setNoteContent] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
+  const [taskDueDate, setTaskDueDate] = useState("");
+
+  const { data: lead, isLoading: leadLoading } = useQuery<Lead>({
+    queryKey: [`/api/leads/${id}`],
+  });
+
+  const { data: notes = [] } = useQuery<LeadNote[]>({
+    queryKey: [`/api/leads/${id}/notes`],
+    enabled: !!id,
+  });
+
+  const { data: tasks = [] } = useQuery<LeadTask[]>({
+    queryKey: [`/api/leads/${id}/tasks`],
+    enabled: !!id,
+  });
+
+  const { data: activity = [] } = useQuery<AuditLog[]>({
+    queryKey: [`/api/leads/${id}/activity`],
+    enabled: !!id,
+  });
+
+  const createNoteMutation = useMutation({
+    mutationFn: async (content: string) => {
+      return await apiRequest("POST", `/api/leads/${id}/notes`, { content });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/leads/${id}/notes`] });
+      setNoteContent("");
+      toast({
+        title: "Anteckning skapad",
+        description: "Din anteckning har sparats",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Fel",
+        description: "Kunde inte skapa anteckning",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createTaskMutation = useMutation({
+    mutationFn: async (data: { description: string; dueDate?: string }) => {
+      return await apiRequest("POST", `/api/leads/${id}/tasks`, {
+        description: data.description,
+        dueDate: data.dueDate || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/leads/${id}/tasks`] });
+      setTaskDescription("");
+      setTaskDueDate("");
+      toast({
+        title: "Uppgift skapad",
+        description: "Uppgiften har lagts till",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Fel",
+        description: "Kunde inte skapa uppgift",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      return await apiRequest("PATCH", `/api/tasks/${taskId}/complete`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/leads/${id}/tasks`] });
+    },
+    onError: () => {
+      toast({
+        title: "Fel",
+        description: "Kunde inte uppdatera uppgift",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateNote = () => {
+    if (!noteContent.trim()) return;
+    createNoteMutation.mutate(noteContent);
+  };
+
+  const handleCreateTask = () => {
+    if (!taskDescription.trim()) return;
+    createTaskMutation.mutate({
+      description: taskDescription,
+      dueDate: taskDueDate || undefined,
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+      NY_INTRESSEANMALAN: { label: "Ny", variant: "default" },
+      KUND_KONTAKTAD: { label: "Kontaktad", variant: "secondary" },
+      VUNNEN: { label: "Vunnen", variant: "default" },
+      FORLORAD: { label: "Förlorad", variant: "outline" },
+    };
+    const config = variants[status] || { label: status, variant: "outline" };
+    return <Badge variant={config.variant} data-testid={`badge-status-${status}`}>{config.label}</Badge>;
+  };
+
+  if (leadLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-8 h-8 animate-spin" data-testid="loader-lead-detail" />
+      </div>
+    );
+  }
+
+  if (!lead) {
+    return (
+      <div className="p-6">
+        <p className="text-muted-foreground" data-testid="text-lead-not-found">Lead hittades inte</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setLocation("/leads")}
+          data-testid="button-back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold" data-testid="text-lead-title">{lead.vehicleTitle}</h1>
+          <p className="text-sm text-muted-foreground" data-testid="text-lead-source">
+            {lead.source} • {lead.anlaggning || "Ingen anläggning"}
+          </p>
+        </div>
+        {getStatusBadge(lead.status)}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card data-testid="card-contact-info">
+          <CardHeader>
+            <CardTitle>Kontaktinformation</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Namn</p>
+              <p className="text-base" data-testid="text-contact-name">{lead.contactName}</p>
+            </div>
+            {lead.contactEmail && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">E-post</p>
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-muted-foreground" />
+                  <a href={`mailto:${lead.contactEmail}`} className="text-base hover:underline" data-testid="link-email">
+                    {lead.contactEmail}
+                  </a>
+                </div>
+              </div>
+            )}
+            {lead.contactPhone && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Telefon</p>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <a href={`tel:${lead.contactPhone}`} className="text-base hover:underline" data-testid="link-phone">
+                    {lead.contactPhone}
+                  </a>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-vehicle-info">
+          <CardHeader>
+            <CardTitle>Fordonsinformation</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Fordon</p>
+              <p className="text-base" data-testid="text-vehicle-title">{lead.vehicleTitle}</p>
+            </div>
+            {lead.vehicleLink && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Länk</p>
+                <a
+                  href={lead.vehicleLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-base text-primary hover:underline"
+                  data-testid="link-vehicle"
+                >
+                  Visa annons <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
+            )}
+            {lead.message && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Meddelande</p>
+                <p className="text-base whitespace-pre-wrap" data-testid="text-message">{lead.message}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card data-testid="card-notes">
+          <CardHeader>
+            <CardTitle>Anteckningar</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Textarea
+                placeholder="Skriv en anteckning..."
+                value={noteContent}
+                onChange={(e) => setNoteContent(e.target.value)}
+                className="resize-none"
+                rows={3}
+                data-testid="input-note"
+              />
+              <Button
+                onClick={handleCreateNote}
+                disabled={!noteContent.trim() || createNoteMutation.isPending}
+                size="sm"
+                data-testid="button-add-note"
+              >
+                {createNoteMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Lägg till
+                  </>
+                )}
+              </Button>
+            </div>
+            <Separator />
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {notes.length === 0 ? (
+                <p className="text-sm text-muted-foreground" data-testid="text-no-notes">Inga anteckningar ännu</p>
+              ) : (
+                notes.map((note) => (
+                  <div key={note.id} className="space-y-1 p-3 bg-muted rounded-md" data-testid={`note-${note.id}`}>
+                    <p className="text-sm" data-testid={`text-note-content-${note.id}`}>{note.content}</p>
+                    <p className="text-xs text-muted-foreground" data-testid={`text-note-date-${note.id}`}>
+                      {format(new Date(note.createdAt), "PPp", { locale: sv })}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-tasks">
+          <CardHeader>
+            <CardTitle>Uppgifter</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Input
+                placeholder="Uppgiftsbeskrivning..."
+                value={taskDescription}
+                onChange={(e) => setTaskDescription(e.target.value)}
+                data-testid="input-task-description"
+              />
+              <Input
+                type="date"
+                value={taskDueDate}
+                onChange={(e) => setTaskDueDate(e.target.value)}
+                data-testid="input-task-date"
+              />
+              <Button
+                onClick={handleCreateTask}
+                disabled={!taskDescription.trim() || createTaskMutation.isPending}
+                size="sm"
+                data-testid="button-add-task"
+              >
+                {createTaskMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Lägg till
+                  </>
+                )}
+              </Button>
+            </div>
+            <Separator />
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {tasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground" data-testid="text-no-tasks">Inga uppgifter ännu</p>
+              ) : (
+                tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex items-start gap-3 p-3 bg-muted rounded-md"
+                    data-testid={`task-${task.id}`}
+                  >
+                    <button
+                      onClick={() => toggleTaskMutation.mutate(task.id)}
+                      className="mt-0.5 hover-elevate active-elevate-2 rounded-sm"
+                      data-testid={`button-toggle-task-${task.id}`}
+                    >
+                      {task.isCompleted ? (
+                        <CheckCircle2 className="w-5 h-5 text-primary" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-muted-foreground" />
+                      )}
+                    </button>
+                    <div className="flex-1">
+                      <p className={`text-sm ${task.isCompleted ? "line-through text-muted-foreground" : ""}`} data-testid={`text-task-description-${task.id}`}>
+                        {task.description}
+                      </p>
+                      {task.dueDate && (
+                        <p className="text-xs text-muted-foreground" data-testid={`text-task-date-${task.id}`}>
+                          Förfaller: {format(new Date(task.dueDate), "PP", { locale: sv })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card data-testid="card-activity">
+        <CardHeader>
+          <CardTitle>Aktivitetshistorik</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {activity.length === 0 ? (
+              <p className="text-sm text-muted-foreground" data-testid="text-no-activity">Ingen aktivitet ännu</p>
+            ) : (
+              activity.map((log) => (
+                <div key={log.id} className="flex gap-3 p-3 bg-muted rounded-md" data-testid={`activity-${log.id}`}>
+                  <div className="flex-1">
+                    <p className="text-sm" data-testid={`text-activity-action-${log.id}`}>{log.action}</p>
+                    {log.fromValue && log.toValue && (
+                      <p className="text-xs text-muted-foreground" data-testid={`text-activity-change-${log.id}`}>
+                        {log.fromValue} → {log.toValue}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground" data-testid={`text-activity-date-${log.id}`}>
+                      {format(new Date(log.createdAt), "PPp", { locale: sv })}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
