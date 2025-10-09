@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, BarChart3, Mail, Users } from "lucide-react";
+import logoPath from "@assets/logo2_1760052846978.webp";
 
 export default function Landing() {
   return (
@@ -10,8 +11,7 @@ export default function Landing() {
       <div className="relative">
         <header className="container mx-auto px-4 py-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-md bg-primary" />
-            <span className="text-xl font-bold">LeadFlow</span>
+            <img src={logoPath} alt="Fritidscenter" className="h-12 w-auto" />
           </div>
           <Button 
             asChild 
@@ -103,7 +103,7 @@ export default function Landing() {
         </main>
 
         <footer className="container mx-auto px-4 py-8 mt-16 border-t text-center text-sm text-muted-foreground">
-          <p>© 2024 LeadFlow. Alla rättigheter förbehållna.</p>
+          <p>© 2025 Fritidscenter. Alla rättigheter förbehållna.</p>
         </footer>
       </div>
     </div>
