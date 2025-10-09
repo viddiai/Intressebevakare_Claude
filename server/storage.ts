@@ -27,6 +27,7 @@ export interface IStorage {
     status?: string;
     source?: string;
     anlaggning?: string;
+    listingId?: string;
   }): Promise<Lead[]>;
   getLead(id: string): Promise<Lead | undefined>;
   getLeadById(id: string): Promise<Lead | undefined>;
@@ -50,6 +51,19 @@ export interface IStorage {
   getSellerPools(anlaggning?: string): Promise<SellerPool[]>;
   createSellerPool(pool: InsertSellerPool): Promise<SellerPool>;
   updateSellerPool(id: string, data: Partial<InsertSellerPool>): Promise<SellerPool | undefined>;
+  
+  getDashboardStats(userId?: string): Promise<{
+    totalLeads: number;
+    newLeads: number;
+    contacted: number;
+    won: number;
+    lost: number;
+    winRate: number;
+    avgTimeToFirstContact: number;
+    avgTimeToClose: number;
+    leadsBySource: Array<{ source: string; count: number }>;
+    leadsByAnlaggning: Array<{ anlaggning: string; count: number }>;
+  }>;
 }
 
 export class DbStorage implements IStorage {
@@ -83,6 +97,7 @@ export class DbStorage implements IStorage {
     status?: string;
     source?: string;
     anlaggning?: string;
+    listingId?: string;
   }): Promise<Lead[]> {
     let query = db.select().from(leads).where(eq(leads.isDeleted, false));
     
@@ -99,6 +114,9 @@ export class DbStorage implements IStorage {
     }
     if (filters?.anlaggning) {
       conditions.push(eq(leads.anlaggning, filters.anlaggning as any));
+    }
+    if (filters?.listingId) {
+      conditions.push(eq(leads.listingId, filters.listingId));
     }
     
     return db.select().from(leads).where(and(...conditions)).orderBy(desc(leads.createdAt));
@@ -270,6 +288,65 @@ export class DbStorage implements IStorage {
       .where(eq(sellerPools.id, id))
       .returning();
     return pool;
+  }
+
+  async getDashboardStats(userId?: string) {
+    const filters = userId ? { assignedToId: userId } : {};
+    const allLeads = await this.getLeads(filters);
+
+    const totalLeads = allLeads.length;
+    const newLeads = allLeads.filter(l => l.status === "NY_INTRESSEANMALAN").length;
+    const contacted = allLeads.filter(l => l.status === "KUND_KONTAKTAD").length;
+    const won = allLeads.filter(l => l.status === "VUNNEN").length;
+    const lost = allLeads.filter(l => l.status === "FORLORAD").length;
+    
+    const closedLeads = won + lost;
+    const winRate = closedLeads > 0 ? (won / closedLeads) * 100 : 0;
+
+    const leadsWithFirstContact = allLeads.filter(l => l.firstContactAt && l.createdAt);
+    const avgTimeToFirstContact = leadsWithFirstContact.length > 0
+      ? leadsWithFirstContact.reduce((sum, lead) => {
+          const diff = lead.firstContactAt!.getTime() - lead.createdAt.getTime();
+          return sum + (diff / (1000 * 60 * 60));
+        }, 0) / leadsWithFirstContact.length
+      : 0;
+
+    const leadsWithClosedAt = allLeads.filter(l => l.closedAt && l.createdAt);
+    const avgTimeToClose = leadsWithClosedAt.length > 0
+      ? leadsWithClosedAt.reduce((sum, lead) => {
+          const diff = lead.closedAt!.getTime() - lead.createdAt.getTime();
+          return sum + (diff / (1000 * 60 * 60 * 24));
+        }, 0) / leadsWithClosedAt.length
+      : 0;
+
+    const leadsBySource = Object.entries(
+      allLeads.reduce((acc, lead) => {
+        acc[lead.source] = (acc[lead.source] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    ).map(([source, count]) => ({ source, count }));
+
+    const leadsByAnlaggning = Object.entries(
+      allLeads.reduce((acc, lead) => {
+        if (lead.anlaggning) {
+          acc[lead.anlaggning] = (acc[lead.anlaggning] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>)
+    ).map(([anlaggning, count]) => ({ anlaggning, count }));
+
+    return {
+      totalLeads,
+      newLeads,
+      contacted,
+      won,
+      lost,
+      winRate,
+      avgTimeToFirstContact,
+      avgTimeToClose,
+      leadsBySource,
+      leadsByAnlaggning,
+    };
   }
 }
 

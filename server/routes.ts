@@ -2,8 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertLeadSchema, insertLeadNoteSchema, insertLeadTaskSchema } from "@shared/schema";
+import { insertLeadSchema, insertLeadNoteSchema, insertLeadTaskSchema, insertSellerPoolSchema } from "@shared/schema";
 import { z } from "zod";
+import { roundRobinService } from "./roundRobin";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
@@ -303,6 +304,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error completing task:", error);
       res.status(500).json({ message: "Failed to complete task" });
+    }
+  });
+
+  app.get('/api/seller-pools', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.role !== "MANAGER") {
+        return res.status(403).json({ message: "Only managers can view seller pools" });
+      }
+
+      const { anlaggning } = req.query;
+      const pools = await storage.getSellerPools(anlaggning as string);
+      res.json(pools);
+    } catch (error) {
+      console.error("Error fetching seller pools:", error);
+      res.status(500).json({ message: "Failed to fetch seller pools" });
+    }
+  });
+
+  app.post('/api/seller-pools', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.role !== "MANAGER") {
+        return res.status(403).json({ message: "Only managers can create seller pools" });
+      }
+
+      const validatedData = insertSellerPoolSchema.parse(req.body);
+      const pool = await storage.createSellerPool(validatedData);
+      res.status(201).json(pool);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error creating seller pool:", error);
+      res.status(500).json({ message: "Failed to create seller pool" });
+    }
+  });
+
+  app.patch('/api/seller-pools/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.role !== "MANAGER") {
+        return res.status(403).json({ message: "Only managers can update seller pools" });
+      }
+
+      const updateSchema = z.object({
+        isEnabled: z.boolean().optional(),
+        sortOrder: z.number().optional(),
+      });
+
+      const validatedData = updateSchema.parse(req.body);
+      const pool = await storage.updateSellerPool(req.params.id, validatedData);
+      
+      if (!pool) {
+        return res.status(404).json({ message: "Seller pool not found" });
+      }
+
+      res.json(pool);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error updating seller pool:", error);
+      res.status(500).json({ message: "Failed to update seller pool" });
+    }
+  });
+
+  app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const stats = await storage.getDashboardStats(
+        user.role === "MANAGER" ? undefined : userId
+      );
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
     }
   });
 
