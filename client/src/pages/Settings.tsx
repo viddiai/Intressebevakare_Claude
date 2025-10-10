@@ -19,7 +19,7 @@ export default function Settings() {
   const [anlaggning, setAnlaggning] = useState(user?.anlaggning || "");
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { role: string; anlaggning?: string }) => {
+    mutationFn: async (data: { role: string; anlaggning?: string | null }) => {
       return apiRequest("PATCH", `/api/users/${user?.id}`, data);
     },
     onSuccess: () => {
@@ -41,7 +41,7 @@ export default function Settings() {
   const handleSave = () => {
     updateProfileMutation.mutate({
       role,
-      anlaggning: anlaggning || undefined,
+      anlaggning: anlaggning || null,
     });
   };
 
@@ -118,12 +118,12 @@ export default function Settings() {
 
           <div className="space-y-2">
             <Label htmlFor="anlaggning">Anläggning (valfritt)</Label>
-            <Select value={anlaggning} onValueChange={setAnlaggning}>
+            <Select value={anlaggning || "NONE"} onValueChange={(val) => setAnlaggning(val === "NONE" ? "" : val)}>
               <SelectTrigger id="anlaggning" data-testid="select-anlaggning">
                 <SelectValue placeholder="Välj anläggning" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Ingen anläggning</SelectItem>
+                <SelectItem value="NONE">Ingen anläggning</SelectItem>
                 <SelectItem value="Falkenberg">Falkenberg</SelectItem>
                 <SelectItem value="Göteborg">Göteborg</SelectItem>
                 <SelectItem value="Trollhättan">Trollhättan</SelectItem>
