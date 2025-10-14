@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./localAuth";
+import { setupAuth, isAuthenticated, sanitizeUser } from "./localAuth";
 import { insertLeadSchema, insertLeadNoteSchema, insertLeadTaskSchema, insertSellerPoolSchema, registerUserSchema, loginUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { roundRobinService } from "./roundRobin";
@@ -38,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (err) {
           return res.status(500).json({ message: "Registrering lyckades men inloggning misslyckades" });
         }
-        res.json({ message: "Registrering lyckades", user });
+        res.json({ message: "Registrering lyckades", user: sanitizeUser(user) });
       });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -62,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (loginErr) {
           return res.status(500).json({ message: "Inloggning misslyckades" });
         }
-        res.json({ message: "Inloggning lyckades", user });
+        res.json({ message: "Inloggning lyckades", user: sanitizeUser(user) });
       });
     })(req, res, next);
   });
@@ -73,13 +73,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (err) {
         return res.status(500).json({ message: "Utloggning misslyckades" });
       }
-      res.json({ message: "Utloggning lyckades" });
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) {
+          return res.status(500).json({ message: "Utloggning misslyckades" });
+        }
+        res.clearCookie('connect.sid');
+        res.json({ message: "Utloggning lyckades" });
+      });
     });
   });
 
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      res.json(req.user);
+      res.json(sanitizeUser(req.user));
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });

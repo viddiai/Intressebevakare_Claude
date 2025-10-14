@@ -6,6 +6,12 @@ import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 
+// Sanitize user object to remove sensitive fields
+export function sanitizeUser(user: any) {
+  const { passwordHash, ...sanitized } = user;
+  return sanitized;
+}
+
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000;
   const pgStore = connectPg(session);
@@ -23,6 +29,7 @@ export function getSession() {
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
       maxAge: sessionTtl,
     },
   });
