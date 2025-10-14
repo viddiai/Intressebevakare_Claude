@@ -11,7 +11,7 @@ export default function Landing() {
       <div className="relative">
         <header className="container mx-auto px-4 py-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={logoPath} alt="Fritidscenter" className="h-12 w-auto" />
+            <img src={logoPath} alt="Fritidscenter" className="h-24 w-auto" />
           </div>
           <Button 
             asChild 
