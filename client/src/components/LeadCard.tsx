@@ -45,7 +45,7 @@ export default function LeadCard({
   const getSourceLabel = () => {
     if (source === "BYTBIL") return "Bytbil";
     if (source === "BLOCKET") return "Blocket";
-    return "Manuell";
+    return "Hemsidan";
   };
 
   return (
