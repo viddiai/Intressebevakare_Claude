@@ -33,13 +33,13 @@ export default function SellerPools() {
       queryClient.invalidateQueries({ queryKey: ["/api/seller-pools"] });
       toast({
         title: "Uppdaterad",
-        description: "Säljarpoolens status har uppdaterats",
+        description: "Resurspoolens status har uppdaterats",
       });
     },
     onError: () => {
       toast({
         title: "Fel",
-        description: "Kunde inte uppdatera säljarpoolens status",
+        description: "Kunde inte uppdatera resurspoolens status",
         variant: "destructive",
       });
     },
@@ -77,10 +77,10 @@ export default function SellerPools() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground" data-testid="heading-seller-pools">
-          Säljarpool-hantering
+          Resurspool-hantering
         </h1>
         <p className="text-muted-foreground mt-1">
-          Aktivera eller inaktivera säljare per anläggning
+          Aktivera eller inaktivera resurser (säljare och managers) per anläggning
         </p>
       </div>
 
@@ -96,13 +96,13 @@ export default function SellerPools() {
             <CardContent className="space-y-4">
               {pools.length === 0 ? (
                 <p className="text-sm text-muted-foreground" data-testid={`text-no-sellers-${facility}`}>
-                  Inga säljare i denna pool
+                  Inga resurser i denna pool
                 </p>
               ) : (
                 pools
                   .sort((a, b) => a.sortOrder - b.sortOrder)
                   .map((pool) => {
-                    const seller = getUserById(pool.userId);
+                    const resource = getUserById(pool.userId);
                     return (
                       <div
                         key={pool.id}
@@ -111,12 +111,15 @@ export default function SellerPools() {
                       >
                         <div className="flex-1">
                           <p className="font-medium text-sm" data-testid={`text-seller-name-${pool.id}`}>
-                            {seller ? `${seller.firstName} ${seller.lastName}` : "Okänd säljare"}
+                            {resource ? `${resource.firstName} ${resource.lastName}` : "Okänd resurs"}
                           </p>
                           <p className="text-xs text-muted-foreground" data-testid={`text-seller-email-${pool.id}`}>
-                            {seller?.email || "Ingen e-post"}
+                            {resource?.email || "Ingen e-post"}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs" data-testid={`badge-role-${pool.id}`}>
+                              {resource?.role === "MANAGER" ? "Manager" : "Säljare"}
+                            </Badge>
                             <Badge variant="outline" className="text-xs" data-testid={`badge-sort-order-${pool.id}`}>
                               #{pool.sortOrder}
                             </Badge>
@@ -156,9 +159,10 @@ export default function SellerPools() {
           <CardTitle>Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>• Aktiverade säljare deltar i round-robin-tilldelning för sin anläggning</p>
-          <p>• Inaktiverade säljare får inga nya leads automatiskt</p>
+          <p>• Aktiverade resurser deltar i round-robin-tilldelning för sin anläggning</p>
+          <p>• Inaktiverade resurser får inga nya leads automatiskt</p>
           <p>• Sorteringsordningen bestämmer ordningen i round-robin-rotationen</p>
+          <p>• Både säljare och managers kan läggas till i resurspolen</p>
         </CardContent>
       </Card>
     </div>

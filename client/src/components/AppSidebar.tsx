@@ -36,7 +36,7 @@ const menuItems = [
     roles: ["MANAGER", "SALJARE"],
   },
   {
-    title: "Säljarpool",
+    title: "Resurspool",
     url: "/seller-pools",
     icon: Users,
     roles: ["MANAGER"],
