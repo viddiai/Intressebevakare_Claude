@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Loader2, Filter } from "lucide-react";
+import { Loader2, Filter, Users, TrendingUp, Clock, Target, Eye } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DashboardStats {
@@ -72,10 +72,30 @@ export default function Dashboard() {
   }
 
   const kpiData = [
-    { title: "Totala leads", value: stats.totalLeads.toString(), subtitle: "Alla leads", trend: 0 },
-    { title: "Konverteringsgrad", value: `${stats.winRate.toFixed(1)}%`, subtitle: "Win rate", trend: 0 },
-    { title: "Genomsnittlig svarstid", value: `${stats.avgTimeToFirstContact.toFixed(1)}h`, subtitle: "Tid till första kontakt", trend: 0 },
-    { title: "Genomsnittlig säljtid", value: `${stats.avgTimeToClose.toFixed(1)} dagar`, subtitle: "Tid till avslut", trend: 0 },
+    { 
+      title: "Totala Leads", 
+      value: stats.totalLeads.toString(), 
+      subtitle: "Alla leads i systemet", 
+      icon: Eye
+    },
+    { 
+      title: "Konverteringsgrad", 
+      value: `${stats.winRate.toFixed(1)}%`, 
+      subtitle: "Win rate", 
+      icon: TrendingUp
+    },
+    { 
+      title: "Svarstid", 
+      value: `${stats.avgTimeToFirstContact.toFixed(1)}h`, 
+      subtitle: "Genomsnittlig tid", 
+      icon: Clock
+    },
+    { 
+      title: "Säljtid", 
+      value: `${stats.avgTimeToClose.toFixed(1)} dagar`, 
+      subtitle: "Genomsnittlig tid till avslut", 
+      icon: Target
+    },
   ];
 
   const statusDistribution = [
@@ -90,7 +110,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">KPI & Statistik</p>
+          <p className="text-muted-foreground mt-1">Översikt & Statistik</p>
         </div>
         <Button 
           variant="outline" 
@@ -166,7 +186,7 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiData.map((kpi, idx) => (
           <KpiCard key={idx} {...kpi} />
         ))}
@@ -174,7 +194,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-6">Lead-källor</h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-foreground">Lead-källor</h3>
+          </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={stats.leadsBySource}>
               <defs>
@@ -203,7 +225,9 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-6">Anläggningsfördelning</h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-foreground">Anläggningsfördelning</h3>
+          </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={stats.leadsByAnlaggning}>
               <defs>
@@ -232,9 +256,11 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-6">Statusfördelning</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="p-6 lg:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-foreground">Statusfördelning</h3>
+          </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={statusDistribution}>
               <defs>
@@ -267,10 +293,13 @@ export default function Dashboard() {
 
         <Card className="p-6 flex flex-col justify-center">
           <div className="text-center space-y-4">
-            <div className="text-6xl font-bold text-primary">{stats.totalLeads}</div>
+            <div className="mx-auto p-4 rounded-full bg-primary/10 w-fit">
+              <Users className="w-12 h-12 text-primary" />
+            </div>
+            <div className="text-5xl font-bold text-primary">{stats.totalLeads}</div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Totalt antal leads</p>
-              <p className="text-xs text-muted-foreground mt-1">I systemet</p>
+              <p className="text-sm font-medium text-foreground">Totalt antal leads</p>
+              <p className="text-xs text-muted-foreground mt-1">I hela systemet</p>
             </div>
           </div>
         </Card>
