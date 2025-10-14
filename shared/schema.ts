@@ -24,10 +24,11 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table adapted for Replit Auth
+// User storage table
 export const users = pgTable("users", {
   id: varchar("id", { length: 255 }).primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
+  email: varchar("email").unique().notNull(),
+  passwordHash: text("password_hash"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -106,6 +107,21 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const registerUserSchema = createInsertSchema(users)
+  .pick({
+    email: true,
+    firstName: true,
+    lastName: true,
+  })
+  .extend({
+    password: z.string().min(6, "Lösenordet måste vara minst 6 tecken"),
+  });
+
+export const loginUserSchema = z.object({
+  email: z.string().email("Ogiltig e-postadress"),
+  password: z.string().min(1, "Lösenord krävs"),
 });
 
 export const upsertUserSchema = createInsertSchema(users).pick({
