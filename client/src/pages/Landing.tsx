@@ -66,7 +66,7 @@ export default function Landing() {
                     <CardTitle>Round-Robin Fördelning</CardTitle>
                   </div>
                   <CardDescription>
-                    Rättvis fördelning per anläggning (Falkenberg, Göteborg, Trollhättan) med aktivering via manager
+                    Rättvis automatisk fördelning per anläggning (Falkenberg, Göteborg, Trollhättan) eller med aktivering via manager
                   </CardDescription>
                 </CardHeader>
               </Card>
