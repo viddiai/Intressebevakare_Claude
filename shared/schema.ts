@@ -132,6 +132,17 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   profileImageUrl: true,
 });
 
+export const updateProfileSchema = z.object({
+  firstName: z.string().min(1, "Förnamn krävs").optional(),
+  lastName: z.string().min(1, "Efternamn krävs").optional(),
+  profileImageUrl: z.string().url("Ogiltig bild-URL").optional().nullable(),
+});
+
+export const changePasswordSchema = z.object({
+  oldPassword: z.string().min(1, "Nuvarande lösenord krävs"),
+  newPassword: z.string().min(6, "Nytt lösenord måste vara minst 6 tecken"),
+});
+
 export const insertLeadSchema = createInsertSchema(leads).omit({
   id: true,
   createdAt: true,

@@ -2,10 +2,10 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, sanitizeUser } from "./localAuth";
-import { insertLeadSchema, insertLeadNoteSchema, insertLeadTaskSchema, insertSellerPoolSchema, registerUserSchema, loginUserSchema } from "@shared/schema";
+import { insertLeadSchema, insertLeadNoteSchema, insertLeadTaskSchema, insertSellerPoolSchema, registerUserSchema, loginUserSchema, updateProfileSchema, changePasswordSchema } from "@shared/schema";
 import { z } from "zod";
 import { roundRobinService } from "./roundRobin";
-import { hashPassword } from "./auth";
+import { hashPassword, verifyPassword } from "./auth";
 import passport from "passport";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -141,6 +141,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.patch('/api/users/:id/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const targetUserId = req.params.id;
+
+      if (userId !== targetUserId) {
+        return res.status(403).json({ message: "Du kan bara uppdatera din egen profil" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Användare hittades inte" });
+      }
+
+      const validatedData = updateProfileSchema.parse(req.body);
+      const updatedUser = await storage.updateUser(userId, validatedData);
+
+      res.json(sanitizeUser(updatedUser));
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Valideringsfel", errors: error.errors });
+      }
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Misslyckades att uppdatera profil" });
+    }
+  });
+
+  app.patch('/api/users/:id/password', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const targetUserId = req.params.id;
+
+      if (userId !== targetUserId) {
+        return res.status(403).json({ message: "Du kan bara ändra ditt eget lösenord" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Användare hittades inte" });
+      }
+
+      const validatedData = changePasswordSchema.parse(req.body);
+
+      // Verify old password
+      if (!user.passwordHash) {
+        return res.status(400).json({ message: "Användaren har inget lösenord inställt" });
+      }
+
+      const isValidPassword = await verifyPassword(user.passwordHash, validatedData.oldPassword);
+      if (!isValidPassword) {
+        return res.status(400).json({ message: "Nuvarande lösenord är felaktigt" });
+      }
+
+      // Hash new password and update
+      const newPasswordHash = await hashPassword(validatedData.newPassword);
+      const updatedUser = await storage.updateUser(userId, { passwordHash: newPasswordHash });
+
+      res.json({ message: "Lösenordet har uppdaterats" });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Valideringsfel", errors: error.errors });
+      }
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Misslyckades att ändra lösenord" });
     }
   });
 

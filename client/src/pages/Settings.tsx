@@ -2,13 +2,33 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, Lock } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
+const profileSchema = z.object({
+  firstName: z.string().min(1, "Förnamn krävs").optional(),
+  lastName: z.string().min(1, "Efternamn krävs").optional(),
+  profileImageUrl: z.string().url("Ogiltig URL").optional().or(z.literal("")),
+});
+
+const passwordSchema = z.object({
+  oldPassword: z.string().min(1, "Nuvarande lösenord krävs"),
+  newPassword: z.string().min(6, "Nytt lösenord måste vara minst 6 tecken"),
+  confirmPassword: z.string().min(1, "Bekräfta lösenord"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Lösenorden matchar inte",
+  path: ["confirmPassword"],
+});
 
 export default function Settings() {
   const { user } = useAuth();
@@ -17,6 +37,24 @@ export default function Settings() {
   
   const [role, setRole] = useState(user?.role || "SALJARE");
   const [anlaggning, setAnlaggning] = useState(user?.anlaggning || "");
+
+  const profileForm = useForm({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      firstName: user?.firstName || "",
+      lastName: user?.lastName || "",
+      profileImageUrl: user?.profileImageUrl || "",
+    },
+  });
+
+  const passwordForm = useForm({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      oldPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { role: string; anlaggning?: string | null }) => {
@@ -38,10 +76,61 @@ export default function Settings() {
     },
   });
 
+  const updateProfileInfoMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof profileSchema>) => {
+      return apiRequest("PATCH", `/api/users/${user?.id}/profile`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({
+        title: "Profil uppdaterad",
+        description: "Din profilinformation har uppdaterats.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Fel",
+        description: "Kunde inte uppdatera profilen. Försök igen.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { oldPassword: string; newPassword: string }) => {
+      return apiRequest("PATCH", `/api/users/${user?.id}/password`, data);
+    },
+    onSuccess: () => {
+      passwordForm.reset();
+      toast({
+        title: "Lösenord uppdaterat",
+        description: "Ditt lösenord har ändrats.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fel",
+        description: error.message || "Kunde inte ändra lösenord. Kontrollera att du angett rätt nuvarande lösenord.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSave = () => {
     updateProfileMutation.mutate({
       role,
       anlaggning: anlaggning || null,
+    });
+  };
+
+  const onProfileSubmit = (data: z.infer<typeof profileSchema>) => {
+    updateProfileInfoMutation.mutate(data);
+  };
+
+  const onPasswordSubmit = (data: z.infer<typeof passwordSchema>) => {
+    changePasswordMutation.mutate({
+      oldPassword: data.oldPassword,
+      newPassword: data.newPassword,
     });
   };
 
@@ -75,22 +164,84 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Profilinformation</CardTitle>
-          <CardDescription>Din information från Replit Auth</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="w-5 h-5" />
+            Profilinformation
+          </CardTitle>
+          <CardDescription>Uppdatera ditt namn och profilbild</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={user.profileImageUrl || undefined} />
-              <AvatarFallback className="text-lg">{getUserInitials()}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-lg font-medium">
-                {user.firstName} {user.lastName}
-              </p>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-            </div>
-          </div>
+        <CardContent>
+          <Form {...profileForm}>
+            <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={profileForm.watch("profileImageUrl") || user.profileImageUrl || undefined} />
+                  <AvatarFallback className="text-lg">{getUserInitials()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">{user.email}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={profileForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Förnamn</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Ditt förnamn" data-testid="input-firstname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={profileForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Efternamn</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Ditt efternamn" data-testid="input-lastname" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={profileForm.control}
+                name="profileImageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Profilbild URL</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="https://exempel.se/bild.jpg" data-testid="input-profileimage" />
+                    </FormControl>
+                    <FormDescription>
+                      Ange en URL till din profilbild
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button
+                type="submit"
+                disabled={updateProfileInfoMutation.isPending}
+                data-testid="button-save-profileinfo"
+              >
+                {updateProfileInfoMutation.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                Spara profilinformation
+              </Button>
+            </form>
+          </Form>
         </CardContent>
       </Card>
 
@@ -154,6 +305,77 @@ export default function Settings() {
             )}
             Spara ändringar
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="w-5 h-5" />
+            Ändra lösenord
+          </CardTitle>
+          <CardDescription>Uppdatera ditt lösenord</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...passwordForm}>
+            <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+              <FormField
+                control={passwordForm.control}
+                name="oldPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nuvarande lösenord</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" placeholder="Ange nuvarande lösenord" data-testid="input-oldpassword" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={passwordForm.control}
+                name="newPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nytt lösenord</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" placeholder="Ange nytt lösenord" data-testid="input-newpassword" />
+                    </FormControl>
+                    <FormDescription>
+                      Lösenordet måste vara minst 6 tecken
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={passwordForm.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bekräfta nytt lösenord</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" placeholder="Bekräfta nytt lösenord" data-testid="input-confirmpassword" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button
+                type="submit"
+                disabled={changePasswordMutation.isPending}
+                data-testid="button-change-password"
+              >
+                {changePasswordMutation.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                Ändra lösenord
+              </Button>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </div>
