@@ -154,6 +154,8 @@ Activity & Audit:
 
 Users & Seller Pools:
 - GET `/api/users` - Get all users (manager-only)
+- PATCH `/api/users/:id/profile` - Update user profile (firstName, lastName, profileImageUrl)
+- PATCH `/api/users/:id/password` - Change user password (requires oldPassword and newPassword)
 - GET `/api/seller-pools` - Get seller pool configuration (manager-only)
 - PATCH `/api/seller-pools/:id` - Update seller pool entry (activate/deactivate)
 

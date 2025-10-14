@@ -18,7 +18,10 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 const profileSchema = z.object({
   firstName: z.string().min(1, "Förnamn krävs").optional(),
   lastName: z.string().min(1, "Efternamn krävs").optional(),
-  profileImageUrl: z.string().url("Ogiltig URL").optional().or(z.literal("")),
+  profileImageUrl: z.string().trim().optional().nullable().refine(
+    (val) => !val || val === "" || z.string().url().safeParse(val).success,
+    { message: "Ogiltig URL" }
+  ),
 });
 
 const passwordSchema = z.object({
@@ -124,7 +127,12 @@ export default function Settings() {
   };
 
   const onProfileSubmit = (data: z.infer<typeof profileSchema>) => {
-    updateProfileInfoMutation.mutate(data);
+    // Convert empty string or undefined to null for profileImageUrl
+    const cleanedData = {
+      ...data,
+      profileImageUrl: !data.profileImageUrl || data.profileImageUrl.trim() === "" ? null : data.profileImageUrl.trim(),
+    };
+    updateProfileInfoMutation.mutate(cleanedData);
   };
 
   const onPasswordSubmit = (data: z.infer<typeof passwordSchema>) => {
