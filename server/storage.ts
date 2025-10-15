@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, leads, leadNotes, leadTasks, auditLogs, sellerPools } from "@shared/schema";
+import { users, leads, leadNotes, leadTasks, auditLogs, sellerPools, passwordResetTokens } from "@shared/schema";
 import type {
   User,
   InsertUser,
@@ -15,7 +15,7 @@ import type {
   SellerPool,
   InsertSellerPool,
 } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, lt } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -72,6 +72,11 @@ export interface IStorage {
     leadsBySource: Array<{ source: string; count: number }>;
     leadsByAnlaggning: Array<{ anlaggning: string; count: number }>;
   }>;
+  
+  createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void>;
+  getPasswordResetToken(token: string): Promise<{ id: string; userId: string; token: string; expiresAt: Date; usedAt: Date | null } | undefined>;
+  markPasswordResetTokenAsUsed(token: string): Promise<void>;
+  deleteExpiredPasswordResetTokens(): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -399,6 +404,35 @@ export class DbStorage implements IStorage {
       leadsBySource,
       leadsByAnlaggning,
     };
+  }
+
+  async createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void> {
+    await db.insert(passwordResetTokens).values({
+      userId,
+      token,
+      expiresAt,
+    });
+  }
+
+  async getPasswordResetToken(token: string): Promise<{ id: string; userId: string; token: string; expiresAt: Date; usedAt: Date | null } | undefined> {
+    const [resetToken] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.token, token));
+    return resetToken;
+  }
+
+  async markPasswordResetTokenAsUsed(token: string): Promise<void> {
+    await db
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokens.token, token));
+  }
+
+  async deleteExpiredPasswordResetTokens(): Promise<void> {
+    await db
+      .delete(passwordResetTokens)
+      .where(lt(passwordResetTokens.expiresAt, new Date()));
   }
 }
 
