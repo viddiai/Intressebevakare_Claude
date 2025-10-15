@@ -5,6 +5,9 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function sendPasswordResetEmail(to: string, resetToken: string) {
   const resetUrl = `${process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 'http://localhost:5000'}/reset-password?token=${resetToken}`;
 
+  console.log(`📧 Attempting to send email to: ${to}`);
+  console.log(`🔑 API Key exists: ${!!process.env.RESEND_API_KEY}`);
+  
   try {
     const { data, error } = await resend.emails.send({
       from: 'Leadhantering <noreply@intressefritidscenter.se>',

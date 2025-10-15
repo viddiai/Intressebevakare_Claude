@@ -90,6 +90,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Debug route to test email (remove in production)
+  app.get('/api/test-email', async (req, res) => {
+    try {
+      const apiKeyExists = !!process.env.RESEND_API_KEY;
+      const apiKeyPreview = process.env.RESEND_API_KEY ? `${process.env.RESEND_API_KEY.substring(0, 8)}...` : 'NOT SET';
+      
+      if (!apiKeyExists) {
+        return res.json({
+          status: 'error',
+          message: 'RESEND_API_KEY is not set',
+          apiKeyPreview
+        });
+      }
+
+      const testResult = await sendPasswordResetEmail('test@example.com', 'test-token-123');
+      res.json({
+        status: 'success',
+        message: 'Email sent successfully',
+        apiKeyPreview,
+        result: testResult
+      });
+    } catch (error: any) {
+      res.json({
+        status: 'error',
+        message: error.message || 'Unknown error',
+        statusCode: error.statusCode,
+        name: error.name,
+        details: error
+      });
+    }
+  });
+
   // Forgot password endpoint
   app.post('/api/forgot-password', async (req, res) => {
     try {
@@ -112,10 +144,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send password reset email
       try {
-        await sendPasswordResetEmail(user.email, resetToken);
-        console.log(`Password reset email sent to ${user.email}`);
-      } catch (emailError) {
-        console.error('Failed to send password reset email:', emailError);
+        const emailResult = await sendPasswordResetEmail(user.email, resetToken);
+        console.log(`✅ Password reset email sent to ${user.email}`, emailResult);
+      } catch (emailError: any) {
+        console.error('❌ Failed to send password reset email:', emailError);
+        console.error('Error details:', emailError.message, emailError.statusCode);
         // Don't reveal email sending failure to prevent user enumeration
       }
       
