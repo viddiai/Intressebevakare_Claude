@@ -6,6 +6,7 @@ import { insertLeadSchema, insertLeadNoteSchema, insertLeadTaskSchema, insertSel
 import { z } from "zod";
 import { roundRobinService } from "./roundRobin";
 import { hashPassword, verifyPassword } from "./auth";
+import { sendPasswordResetEmail } from "./email";
 import passport from "passport";
 import crypto from "crypto";
 
@@ -109,13 +110,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save token to database
       await storage.createPasswordResetToken(user.id, resetToken, expiresAt);
 
-      // In development, log the reset link to console
-      // In production, this would send an email
-      const resetUrl = `${process.env.REPL_URL || 'http://localhost:5000'}/reset-password?token=${resetToken}`;
-      console.log('Password reset link:', resetUrl);
-      
-      // TODO: Send email with reset link
-      // For now, we'll just return success
+      // Send password reset email
+      try {
+        await sendPasswordResetEmail(user.email, resetToken);
+        console.log(`Password reset email sent to ${user.email}`);
+      } catch (emailError) {
+        console.error('Failed to send password reset email:', emailError);
+        // Don't reveal email sending failure to prevent user enumeration
+      }
       
       res.json({ message: "Om e-postadressen finns i systemet har ett återställningsmail skickats" });
     } catch (error: any) {
