@@ -103,6 +103,15 @@ export const sellerPools = pgTable("seller_pools", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id", { length: 255 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  usedAt: timestamp("used_at"),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -170,6 +179,15 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
 
 export const insertSellerPoolSchema = createInsertSchema(sellerPools).omit({
   id: true,
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Ogiltig e-postadress"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Token krävs"),
+  newPassword: z.string().min(6, "Lösenord måste vara minst 6 tecken"),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
