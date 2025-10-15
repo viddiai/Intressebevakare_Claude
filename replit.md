@@ -101,8 +101,10 @@ Preferred communication style: Simple, everyday language.
    - One-time use enforcement via usedAt timestamp
    - Token validation checks expiry and previous use
    - Automatic cleanup of expired tokens
-   - In development: reset links logged to console
-   - In production: email delivery can be configured via SMTP
+   - Email delivery via Resend API
+   - Sender: noreply@intressefritidscenter.se
+   - HTML-formatted reset emails with branded design
+   - API key stored in RESEND_API_KEY environment variable
 
 ### Data Storage Solutions
 
@@ -216,10 +218,14 @@ Dashboard & Analytics:
    - Client credentials via REPL_ID
    - Session management handled by application
 
-3. **Email Services (IMAP):**
-   - Configurable IMAP server (host, port, credentials via env vars)
-   - Supports any standard IMAP provider
-   - Optional configuration (system runs without email ingestion if not configured)
+3. **Email Services:**
+   - **IMAP** (for receiving): Configurable IMAP server (host, port, credentials via env vars)
+     - Supports any standard IMAP provider
+     - Optional configuration (system runs without email ingestion if not configured)
+   - **Resend** (for sending): Transactional email service for password reset emails
+     - API key stored in RESEND_API_KEY environment variable
+     - Sender domain: intressefritidscenter.se
+     - HTML-formatted branded emails
 
 **Third-Party APIs:**
 
@@ -250,6 +256,7 @@ UI components:
 Email processing:
 - imapflow (modern IMAP client)
 - cheerio (HTML parsing)
+- resend (transactional email service)
 
 Security:
 - argon2 (password hashing)
@@ -266,4 +273,4 @@ Production:
 - Vite builds frontend to `dist/public`
 - esbuild bundles server to `dist/index.js`
 - Single production command: `node dist/index.js`
-- Environment variables for configuration (DATABASE_URL, SESSION_SECRET, IMAP credentials, REPL_ID)
+- Environment variables for configuration (DATABASE_URL, SESSION_SECRET, IMAP credentials, REPL_ID, RESEND_API_KEY)
