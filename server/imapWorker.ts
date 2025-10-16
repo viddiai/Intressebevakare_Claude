@@ -29,6 +29,8 @@ export class ImapWorker {
     }
 
     try {
+      console.log(`[${this.config.name}] Attempting to connect to ${this.config.host}:${this.config.port}...`);
+      
       this.client = new ImapFlow({
         host: this.config.host,
         port: this.config.port,
@@ -40,11 +42,23 @@ export class ImapWorker {
         logger: false,
       });
 
-      await this.client.connect();
-      console.log(`[${this.config.name}] Connected to IMAP server`);
+      const connectPromise = this.client.connect();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Connection timeout after 15 seconds')), 15000)
+      );
+
+      await Promise.race([connectPromise, timeoutPromise]);
+      console.log(`[${this.config.name}] ✅ Connected to IMAP server successfully`);
       return true;
     } catch (error) {
-      console.error(`[${this.config.name}] Failed to connect to IMAP server:`, error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[${this.config.name}] ❌ Failed to connect to IMAP server: ${errorMessage}`);
+      if (this.client) {
+        try {
+          await this.client.logout();
+        } catch {}
+        this.client = null;
+      }
       return false;
     }
   }
