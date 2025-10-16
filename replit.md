@@ -105,6 +105,7 @@ Preferred communication style: Simple, everyday language.
    - Sender: noreply@intressefritidscenter.se
    - HTML-formatted reset emails with branded design
    - API key stored in RESEND_API_KEY environment variable
+   - Smart URL generation: uses REPLIT_DOMAINS (published), REPLIT_DEV_DOMAIN (dev), or localhost
 
 ### Data Storage Solutions
 

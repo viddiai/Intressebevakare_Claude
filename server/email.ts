@@ -3,9 +3,21 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendPasswordResetEmail(to: string, resetToken: string) {
-  const resetUrl = `${process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 'http://localhost:5000'}/reset-password?token=${resetToken}`;
+  let baseUrl: string;
+  
+  if (process.env.REPLIT_DOMAINS) {
+    const domains = process.env.REPLIT_DOMAINS.split(',');
+    baseUrl = `https://${domains[0]}`;
+  } else if (process.env.REPLIT_DEV_DOMAIN) {
+    baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  } else {
+    baseUrl = 'http://localhost:5000';
+  }
+  
+  const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
   console.log(`📧 Attempting to send email to: ${to}`);
+  console.log(`🔗 Reset URL: ${resetUrl}`);
   console.log(`🔑 API Key exists: ${!!process.env.RESEND_API_KEY}`);
   
   try {
