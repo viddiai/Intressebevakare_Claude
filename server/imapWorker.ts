@@ -2,6 +2,8 @@ import { ImapFlow } from "imapflow";
 import { EmailParser } from "./emailParsers";
 import { roundRobinService } from "./roundRobin";
 import { storage } from "./storage";
+import * as fs from "fs";
+import * as path from "path";
 
 export interface ImapConfig {
   name: string;
@@ -135,12 +137,30 @@ export class ImapWorker {
 
     if (!parsed) {
       console.log(`[${this.config.name}] Could not parse email from ${from} with subject: ${subject}`);
-      console.log(`[${this.config.name}] ========== EMAIL DEBUG START ==========`);
-      console.log(`[${this.config.name}] FROM: ${from}`);
-      console.log(`[${this.config.name}] SUBJECT: ${subject}`);
-      console.log(`[${this.config.name}] HTML CONTENT:`);
-      console.log(htmlContent.substring(0, 5000)); // First 5000 chars
-      console.log(`[${this.config.name}] ========== EMAIL DEBUG END ==========`);
+      
+      // Save failed email to file for debugging
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `failed-email-${this.config.name}-${timestamp}.html`;
+      const filepath = path.join('/tmp', filename);
+      
+      const debugInfo = `
+==============================================
+FROM: ${from}
+SUBJECT: ${subject}
+TIME: ${new Date().toISOString()}
+FACILITY: ${this.config.name}
+==============================================
+
+${htmlContent}
+`;
+      
+      try {
+        fs.writeFileSync(filepath, debugInfo);
+        console.log(`[${this.config.name}] ⚠️  Email saved to ${filepath} for debugging`);
+      } catch (err) {
+        console.error(`[${this.config.name}] Failed to save email to file:`, err);
+      }
+      
       return;
     }
 
