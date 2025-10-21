@@ -53,6 +53,7 @@ export const leads = pgTable("leads", {
   listingId: text("listing_id"),
   
   message: text("message"),
+  inquiryDateTime: text("inquiry_date_time"),
   rawPayload: jsonb("raw_payload"),
   
   status: statusEnum("status").notNull().default("NY_INTRESSEANMALAN"),

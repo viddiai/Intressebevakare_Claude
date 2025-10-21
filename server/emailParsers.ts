@@ -1,5 +1,6 @@
 import type { InsertLead } from "@shared/schema";
 import * as cheerio from "cheerio";
+import * as quotedPrintable from "quoted-printable";
 
 export interface ParsedEmail {
   contactName: string;
@@ -9,11 +10,44 @@ export interface ParsedEmail {
   vehicleLink?: string;
   listingId?: string;
   message?: string;
+  inquiryDateTime?: string;
   anlaggning?: "Falkenberg" | "Göteborg" | "Trollhättan";
   rawPayload: any;
 }
 
 export class EmailParser {
+  private static decodeQuotedPrintable(text: string): string {
+    if (!text) return text;
+    try {
+      return quotedPrintable.decode(text);
+    } catch (error) {
+      return text;
+    }
+  }
+
+  private static decodeHtmlQuotedPrintable(html: string): string {
+    if (!html) return html;
+    try {
+      let decoded = html
+        .replace(/=\r?\n/g, '')
+        .replace(/=3D/g, '=')
+        .replace(/=22/g, '"')
+        .replace(/=27/g, "'")
+        .replace(/=C3=A5/g, 'å')
+        .replace(/=C3=A4/g, 'ä')
+        .replace(/=C3=B6/g, 'ö')
+        .replace(/=C3=85/g, 'Å')
+        .replace(/=C3=84/g, 'Ä')
+        .replace(/=C3=96/g, 'Ö')
+        .replace(/=C3=A9/g, 'é')
+        .replace(/=C3=BC/g, 'ü');
+      
+      return decoded;
+    } catch (error) {
+      return html;
+    }
+  }
+
   static parseBytbilEmail(htmlContent: string, subject: string): ParsedEmail | null {
     const $ = cheerio.load(htmlContent);
     
@@ -59,33 +93,35 @@ export class EmailParser {
     };
   }
 
-  static parseBlocketEmail(htmlContent: string, subject: string): ParsedEmail | null {
-    const $ = cheerio.load(htmlContent);
+  static parseBlocketEmail(htmlContent: string, subject: string, senderName?: string): ParsedEmail | null {
+    const decodedHtml = this.decodeHtmlQuotedPrintable(htmlContent);
+    const $ = cheerio.load(decodedHtml);
     
-    const contactName = $('td:contains("Från:")').next().text().trim() ||
-                        $('strong:contains("Från:")').parent().text().replace('Från:', '').trim() ||
-                        $('p:contains("Namn:")').text().replace('Namn:', '').trim();
+    const emailAddress = $('a[href^="mailto:"]').first().attr('href')?.replace('mailto:', '').trim() ||
+                         $('p:contains("E-post:")').text().replace(/E-post:\s*/i, '').trim();
     
-    const contactEmail = $('td:contains("E-postadress:")').next().text().trim() ||
-                         $('a[href^="mailto:"]').attr('href')?.replace('mailto:', '') ||
-                         $('p:contains("E-post:")').text().replace('E-post:', '').trim();
+    let contactName = senderName || '';
+    if (!contactName && emailAddress) {
+      contactName = emailAddress.split('@')[0].replace(/[._-]/g, ' ');
+    }
     
-    const contactPhone = $('td:contains("Telefonnummer:")').next().text().trim() ||
-                         $('p:contains("Telefon:")').text().replace('Telefon:', '').trim();
+    const vehicleTitle = subject.replace(/^Ang\.\s*/i, '').trim();
     
-    const vehicleTitle = subject.replace('Meddelande från Blocket:', '').trim() ||
-                        $('h1, h2').first().text().trim() ||
-                        $('td:contains("Annons:")').next().text().trim();
+    let vehicleLink = $('a[href*="blocket.se/annons"]').first().attr('href') ||
+                      $('a:contains("Annons:")').attr('href') || '';
     
-    const vehicleLink = $('a:contains("Svara")').attr('href') ||
-                       $('a:contains("Visa annons")').attr('href') ||
-                       $('a[href*="blocket.se"]').attr('href');
+    const inquiryDateTime = $('p:contains("Datum:")').text().replace(/Datum:\s*/i, '').trim();
     
-    const message = $('td:contains("Meddelande:")').next().text().trim() ||
-                    $('p').filter((i, el) => {
-                      const text = $(el).text();
-                      return text.length > 20 && !text.includes('Från:') && !text.includes('E-post');
-                    }).first().text().trim();
+    const rawMessage = $('em').first().text().trim() ||
+                       $('p:contains("Meddelande:")').next().find('em').text().trim();
+    
+    let message = '';
+    if (vehicleLink) {
+      message = vehicleLink + '\n\n';
+    }
+    if (rawMessage) {
+      message += rawMessage;
+    }
     
     const anlaggning = this.extractAnlaggningFromContent(htmlContent + ' ' + subject);
     
@@ -95,12 +131,13 @@ export class EmailParser {
 
     return {
       contactName,
-      contactEmail: contactEmail || undefined,
-      contactPhone: contactPhone || undefined,
+      contactEmail: emailAddress || undefined,
+      contactPhone: undefined,
       vehicleTitle,
       vehicleLink: vehicleLink || undefined,
       listingId: vehicleLink ? this.extractListingId(vehicleLink) : undefined,
       message: message || undefined,
+      inquiryDateTime: inquiryDateTime || undefined,
       anlaggning,
       rawPayload: { htmlContent, subject },
     };
@@ -127,13 +164,13 @@ export class EmailParser {
     return match ? match[1] : undefined;
   }
 
-  static parseEmail(htmlContent: string, subject: string, from: string): ParsedEmail | null {
+  static parseEmail(htmlContent: string, subject: string, from: string, senderName?: string): ParsedEmail | null {
     if (from.toLowerCase().includes('bytbil')) {
       return this.parseBytbilEmail(htmlContent, subject);
     }
     
     if (from.toLowerCase().includes('blocket')) {
-      return this.parseBlocketEmail(htmlContent, subject);
+      return this.parseBlocketEmail(htmlContent, subject, senderName);
     }
     
     return null;
@@ -150,6 +187,7 @@ export class EmailParser {
       vehicleLink: parsed.vehicleLink || null,
       listingId: parsed.listingId || null,
       message: parsed.message || null,
+      inquiryDateTime: parsed.inquiryDateTime || null,
       rawPayload: parsed.rawPayload,
       status: "NY_INTRESSEANMALAN",
       assignedToId: null,

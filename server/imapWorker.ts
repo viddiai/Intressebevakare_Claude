@@ -119,6 +119,7 @@ export class ImapWorker {
 
   private async processMessage(message: any) {
     const from = message.envelope.from?.[0]?.address || "";
+    const senderName = message.envelope.from?.[0]?.name || "";
     const subject = message.envelope.subject || "";
     
     let htmlContent = "";
@@ -133,7 +134,7 @@ export class ImapWorker {
       }
     }
 
-    const parsed = EmailParser.parseEmail(htmlContent, subject, from);
+    const parsed = EmailParser.parseEmail(htmlContent, subject, from, senderName);
 
     if (!parsed) {
       console.log(`[${this.config.name}] Could not parse email from ${from} with subject: ${subject}`);
