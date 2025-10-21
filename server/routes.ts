@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, sanitizeUser } from "./localAuth";
-import { insertLeadSchema, insertLeadNoteSchema, insertLeadTaskSchema, insertSellerPoolSchema, registerUserSchema, loginUserSchema, updateProfileSchema, changePasswordSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/schema";
+import { insertLeadSchema, insertLeadNoteSchema, insertLeadTaskSchema, insertSellerPoolSchema, registerUserSchema, loginUserSchema, updateProfileSchema, changePasswordSchema, forgotPasswordSchema, resetPasswordSchema, publicContactSchema } from "@shared/schema";
 import { z } from "zod";
 import { roundRobinService } from "./roundRobin";
 import { hashPassword, verifyPassword } from "./auth";
@@ -295,6 +295,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error during password reset:", error);
       res.status(500).json({ message: "Ett fel uppstod" });
+    }
+  });
+
+  // Public contact form endpoint (no authentication required)
+  app.post('/api/public/contact', async (req, res) => {
+    try {
+      const validatedData = publicContactSchema.parse(req.body);
+      
+      // Create lead with source HEMSIDA
+      const leadData = {
+        source: "HEMSIDA" as const,
+        anlaggning: validatedData.anlaggning,
+        contactName: validatedData.contactName,
+        contactEmail: validatedData.contactEmail || null,
+        contactPhone: validatedData.contactPhone,
+        vehicleTitle: validatedData.vehicleTitle,
+        message: validatedData.message || null,
+        status: "NY_INTRESSEANMALAN" as const,
+      };
+
+      const lead = await storage.createLead(leadData);
+      
+      // Assign lead using round-robin
+      try {
+        const assignedToId = await roundRobinService.assignLeadToNextSeller(validatedData.anlaggning);
+        if (assignedToId) {
+          await storage.assignLead(lead.id, assignedToId);
+          console.log(`✅ Public contact form lead ${lead.id} assigned to ${assignedToId} for ${validatedData.anlaggning}`);
+        }
+      } catch (error) {
+        console.error(`❌ Failed to assign public contact form lead ${lead.id}:`, error);
+      }
+      
+      res.status(201).json({ 
+        message: "Tack för din intresseanmälan! Vi kommer att kontakta dig inom kort.",
+        leadId: lead.id
+      });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Valideringsfel", errors: error.errors });
+      }
+      console.error("Error creating public contact:", error);
+      res.status(500).json({ message: "Ett fel uppstod. Försök igen senare." });
     }
   });
 

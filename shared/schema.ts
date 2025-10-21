@@ -162,6 +162,23 @@ export const insertLeadSchema = createInsertSchema(leads).omit({
   deletedAt: true,
 });
 
+export const publicContactSchema = z.object({
+  contactName: z.string().min(1, "Namn krävs"),
+  contactEmail: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().email("Ogiltig e-postadress").optional()
+  ),
+  contactPhone: z.string().min(1, "Telefonnummer krävs"),
+  vehicleTitle: z.string().min(1, "Fordonstitel krävs"),
+  message: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().optional()
+  ),
+  anlaggning: z.enum(["Falkenberg", "Göteborg", "Trollhättan"], {
+    errorMap: () => ({ message: "Välj en anläggning" }),
+  }),
+});
+
 export const insertLeadNoteSchema = createInsertSchema(leadNotes).omit({
   id: true,
   createdAt: true,

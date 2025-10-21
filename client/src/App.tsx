@@ -13,6 +13,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
+import PublicContact from "@/pages/PublicContact";
 import Overview from "@/pages/Overview";
 import Dashboard from "@/pages/Dashboard";
 import LeadsList from "@/pages/LeadsList";
@@ -28,6 +29,7 @@ function AuthenticatedRouter() {
     return (
       <Switch>
         <Route path="/" component={Landing} />
+        <Route path="/kontakt" component={PublicContact} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/forgot-password" component={ForgotPassword} />

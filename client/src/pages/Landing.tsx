@@ -13,12 +13,21 @@ export default function Landing() {
           <div className="flex items-center gap-2">
             <img src={logoPath} alt="Fritidscenter" className="h-24 w-auto" />
           </div>
-          <Button 
-            asChild 
-            data-testid="button-login"
-          >
-            <a href="/login">Logga in</a>
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              asChild 
+              variant="outline"
+              data-testid="button-contact"
+            >
+              <a href="/kontakt">Kontakta oss</a>
+            </Button>
+            <Button 
+              asChild 
+              data-testid="button-login"
+            >
+              <a href="/login">Logga in</a>
+            </Button>
+          </div>
         </header>
 
         <main className="container mx-auto px-4 py-16">
