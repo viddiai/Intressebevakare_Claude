@@ -2,9 +2,9 @@
 
 ## Overview
 
-This is a full-stack lead management CRM application built for recreational vehicle dealers (caravans/motorhomes) in Sweden. The system automates lead ingestion from Bytbil.se and Blocket, distributes leads to sales representatives using round-robin assignment, and provides complete workflow management from initial contact to deal closure.
+This is a full-stack lead management CRM application built for recreational vehicle dealers (caravans/motorhomes) in Sweden. The system automates lead ingestion from Bytbil.se, Blocket, and the company website via IMAP email processing and public contact forms. It distributes leads to sales representatives using round-robin assignment and provides complete workflow management from initial contact to deal closure.
 
-The application features role-based access control (Manager and Seller roles), automated email parsing, comprehensive lead tracking with status transitions, and analytics dashboards for performance monitoring.
+The application features role-based access control (Manager and Seller roles), automated email parsing, public contact form for website visitors, comprehensive lead tracking with status transitions, and analytics dashboards for performance monitoring.
 
 ## User Preferences
 
@@ -37,6 +37,7 @@ Preferred communication style: Simple, everyday language.
 - Authentication state via `/api/auth/user` endpoint with Replit OAuth
 
 **Key UI Patterns:**
+- Public contact form (/kontakt) for website visitors to submit inquiries without authentication
 - Dashboard with KPI cards showing metrics (conversion rates, response times)
 - Lead list views with tabbed filtering (all, new, contacted, won, lost)
 - Detailed lead views (/leads/:id) with comprehensive information:
@@ -107,6 +108,15 @@ Preferred communication style: Simple, everyday language.
    - API key stored in RESEND_API_KEY environment variable
    - Smart URL generation: uses REPLIT_DOMAINS (published), REPLIT_DEV_DOMAIN (dev), or localhost
 
+5. **Public Contact Form Service:**
+   - Public endpoint (/api/public/contact) for website visitors to submit inquiries
+   - No authentication required
+   - Zod validation with optional email/message fields using z.preprocess
+   - Empty strings converted to undefined/null before validation
+   - Automatic lead creation with source="HEMSIDA"
+   - Round-robin assignment based on selected facility
+   - Success confirmation displayed to user
+
 ### Data Storage Solutions
 
 **Database:**
@@ -141,6 +151,12 @@ Enums:
 
 **API Routes:**
 
+Public:
+- POST `/api/public/contact` - Submit contact form inquiry (no authentication required)
+  - Accepts: contactName, contactEmail (optional), contactPhone, vehicleTitle, message (optional), anlaggning
+  - Creates lead with source="HEMSIDA"
+  - Assigns lead via round-robin
+
 Authentication:
 - GET `/api/auth/user` - Get current authenticated user
 - POST `/api/auth/logout` - Logout current user
@@ -150,7 +166,7 @@ Authentication:
 Leads:
 - GET `/api/leads` - List all leads (role-based filtering)
 - GET `/api/leads/:id` - Get single lead details
-- POST `/api/leads` - Create new lead
+- POST `/api/leads` - Create new lead (manager-only)
 - PATCH `/api/leads/:id/status` - Update lead status
 - POST `/api/leads/:id/assign` - Round-robin assignment to next available seller
 - PATCH `/api/leads/:id/assign` - Manual reassignment to specific seller (manager-only)
