@@ -42,6 +42,13 @@ export class ImapWorker {
         logger: false,
       });
 
+      // Add error handler to prevent unhandled error events from crashing the server
+      this.client.on('error', (err) => {
+        console.error(`[${this.config.name}] IMAP client error:`, err.message || err);
+        // Mark client as unusable but don't crash
+        this.client = null;
+      });
+
       const connectPromise = this.client.connect();
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Connection timeout after 15 seconds')), 15000)
