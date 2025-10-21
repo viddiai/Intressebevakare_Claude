@@ -91,6 +91,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Debug route to check environment variables
+  app.get('/api/debug-env', async (req, res) => {
+    res.json({
+      IMAP_HOST: process.env.IMAP_HOST || 'NOT SET',
+      IMAP_HOST_length: process.env.IMAP_HOST?.length || 0,
+      RESEND_API_KEY_exists: !!process.env.RESEND_API_KEY,
+      NODE_ENV: process.env.NODE_ENV,
+    });
+  });
+
   // Debug route to test email (remove in production)
   app.get('/api/test-email', async (req, res) => {
     try {
