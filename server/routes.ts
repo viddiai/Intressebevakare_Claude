@@ -600,10 +600,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      if (user.role !== "MANAGER") {
-        return res.status(403).json({ message: "Only managers can create leads manually" });
-      }
-
       const validatedData = insertLeadSchema.parse(req.body);
       const lead = await storage.createLead(validatedData);
       res.status(201).json(lead);
