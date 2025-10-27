@@ -4,7 +4,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const roleEnum = pgEnum("role", ["MANAGER", "SALJARE"]);
-export const sourceEnum = pgEnum("source", ["BYTBIL", "BLOCKET", "HEMSIDA"]);
+export const sourceEnum = pgEnum("source", ["BYTBIL", "BLOCKET", "HEMSIDA", "EGET"]);
 export const statusEnum = pgEnum("status", [
   "NY_INTRESSEANMALAN",
   "KUND_KONTAKTAD",
@@ -51,6 +51,7 @@ export const leads = pgTable("leads", {
   vehicleTitle: text("vehicle_title").notNull(),
   vehicleLink: text("vehicle_link"),
   listingId: text("listing_id"),
+  registrationNumber: text("registration_number"),
   
   message: text("message"),
   inquiryDateTime: text("inquiry_date_time"),

@@ -61,6 +61,7 @@ export default function FilterBar({
           <SelectItem value="BYTBIL">Bytbil</SelectItem>
           <SelectItem value="BLOCKET">Blocket</SelectItem>
           <SelectItem value="HEMSIDA">Hemsidan</SelectItem>
+          <SelectItem value="EGET">Eget lead</SelectItem>
         </SelectContent>
       </Select>
 

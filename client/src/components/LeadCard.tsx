@@ -9,7 +9,7 @@ interface LeadCardProps {
   contactName: string;
   contactEmail?: string;
   contactPhone?: string;
-  source: "BYTBIL" | "BLOCKET" | "HEMSIDA";
+  source: "BYTBIL" | "BLOCKET" | "HEMSIDA" | "EGET";
   location: string;
   status: LeadStatus;
   createdAt: string;
@@ -45,6 +45,7 @@ export default function LeadCard({
   const getSourceLabel = () => {
     if (source === "BYTBIL") return "Bytbil";
     if (source === "BLOCKET") return "Blocket";
+    if (source === "EGET") return "Eget lead";
     return "Hemsidan";
   };
 

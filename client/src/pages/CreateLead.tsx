@@ -62,6 +62,7 @@ export default function CreateLead() {
       vehicleTitle: "",
       vehicleLink: "",
       listingId: "",
+      registrationNumber: "",
       message: "",
       anlaggning: undefined,
       status: "NY_INTRESSEANMALAN",
@@ -144,6 +145,7 @@ export default function CreateLead() {
                           <SelectItem value="HEMSIDA">Hemsida</SelectItem>
                           <SelectItem value="BYTBIL">Bytbil</SelectItem>
                           <SelectItem value="BLOCKET">Blocket</SelectItem>
+                          <SelectItem value="EGET">Eget lead</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -286,7 +288,7 @@ export default function CreateLead() {
                     name="listingId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Annons-ID</FormLabel>
+                        <FormLabel>Verendus-ID</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="ID från Bytbil/Blocket"
@@ -300,6 +302,25 @@ export default function CreateLead() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="registrationNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reg.Nr</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="ABC123"
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-registration-number"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
