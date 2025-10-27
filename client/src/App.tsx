@@ -17,6 +17,7 @@ import PublicContact from "@/pages/PublicContact";
 import Overview from "@/pages/Overview";
 import Dashboard from "@/pages/Dashboard";
 import LeadsList from "@/pages/LeadsList";
+import CreateLead from "@/pages/CreateLead";
 import LeadDetail from "@/pages/LeadDetail";
 import SellerPools from "@/pages/SellerPools";
 import Settings from "@/pages/Settings";
@@ -59,6 +60,7 @@ function AuthenticatedRouter() {
               <Route path="/register" component={Register} />
               <Route path="/dashboard" component={Dashboard} />
               <Route path="/leads" component={LeadsList} />
+              <Route path="/leads/create" component={CreateLead} />
               <Route path="/leads/:id" component={LeadDetail} />
               <Route path="/seller-pools" component={SellerPools} />
               <Route path="/settings" component={Settings} />

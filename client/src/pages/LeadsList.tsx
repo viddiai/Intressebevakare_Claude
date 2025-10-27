@@ -100,7 +100,11 @@ export default function LeadsList() {
           <h1 className="text-3xl font-bold text-foreground">Mina Leads</h1>
           <p className="text-muted-foreground mt-1">Hantera dina tilldelade leads</p>
         </div>
-        <Button className="gap-2" data-testid="button-create-lead">
+        <Button 
+          className="gap-2" 
+          onClick={() => setLocation("/leads/create")}
+          data-testid="button-create-lead"
+        >
           <Plus className="w-4 h-4" />
           Skapa lead
         </Button>
