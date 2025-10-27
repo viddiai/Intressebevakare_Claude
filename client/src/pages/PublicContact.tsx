@@ -66,7 +66,7 @@ export default function PublicContact() {
             <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
               <CheckCircle className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle>Tack för din intresseanmälan!</CardTitle>
+            <CardTitle>Tack för dina svar!</CardTitle>
             <CardDescription>
               Vi har tagit emot din förfrågan och kommer att kontakta dig inom kort.
             </CardDescription>
