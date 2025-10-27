@@ -208,6 +208,32 @@ export const resetPasswordSchema = z.object({
   newPassword: z.string().min(6, "Lösenord måste vara minst 6 tecken"),
 });
 
+export const bytbilWebhookSchema = z.object({
+  contactName: z.string().min(1, "Namn krävs"),
+  contactEmail: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().email("Ogiltig e-postadress").optional()
+  ),
+  contactPhone: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().optional()
+  ),
+  vehicleTitle: z.string().min(1, "Fordonstitel krävs"),
+  vehicleLink: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().url("Ogiltig fordonslänk").optional()
+  ),
+  listingId: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().optional()
+  ),
+  message: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().optional()
+  ),
+  anlaggning: z.enum(["Falkenberg", "Göteborg", "Trollhättan"]).optional().nullable(),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;

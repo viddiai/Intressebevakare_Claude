@@ -74,14 +74,27 @@ Preferred communication style: Simple, everyday language.
 
 **Business Logic Services:**
 
-1. **Email Ingestion Service (IMAP Worker):**
-   - ImapFlow client for polling IMAP inbox
+1. **Lead Ingestion Services:**
+   
+   a. **IMAP Email Worker:**
+   - ImapFlow client for polling IMAP inbox (60-second intervals)
    - Filters by sender addresses (Bytbil, Blocket domains)
    - Idempotency via message-ID tracking to prevent duplicate processing
    - Pluggable parser architecture (parserBytbil, parserBlocket)
    - HTML parsing with Cheerio for data extraction
    - Automatic lead creation after successful parsing
    - Marks emails as read post-processing
+   - Handles multiple facilities (Falkenberg, Göteborg, Trollhättan) with separate IMAP configurations
+   
+   b. **Bytbil Webhook Endpoint:**
+   - Real-time webhook receiver for instant lead delivery from Bytbil
+   - Webhook URL: POST `/api/webhooks/bytbil`
+   - Optional webhook secret validation (BYTBIL_WEBHOOK_SECRET env var)
+   - JSON payload validation with Zod schema
+   - Duplicate prevention via listingId matching
+   - Automatic round-robin assignment when anlaggning is provided
+   - Comprehensive logging for debugging and monitoring
+   - Complements IMAP ingestion for faster lead delivery
 
 2. **Round-Robin Assignment Service:**
    - Separate seller pools per facility (Falkenberg, Göteborg, Trollhättan)
@@ -159,6 +172,16 @@ Public:
   - Accepts: contactName, contactEmail (optional), contactPhone, vehicleTitle, message (optional), anlaggning
   - Creates lead with source="HEMSIDA"
   - Assigns lead via round-robin
+
+Webhooks:
+- POST `/api/webhooks/bytbil` - Receive lead webhooks from Bytbil (no authentication required, but validates webhook secret)
+  - Security: Optional BYTBIL_WEBHOOK_SECRET environment variable for webhook authentication
+  - Headers: x-webhook-secret or Authorization: Bearer <secret>
+  - Accepts: contactName, contactEmail (optional), contactPhone (optional), vehicleTitle, vehicleLink (optional), listingId (optional), message (optional), anlaggning (optional)
+  - Creates lead with source="BYTBIL"
+  - Automatically assigns lead via round-robin if anlaggning is provided
+  - Duplicate prevention: Checks listingId to prevent duplicate leads
+  - Logs all incoming webhook payloads for debugging
 
 Authentication:
 - GET `/api/auth/user` - Get current authenticated user
@@ -250,9 +273,32 @@ Dashboard & Analytics:
 **Third-Party APIs:**
 
 1. **Bytbil.se:**
-   - Email notifications for lead inquiries
-   - HTML-formatted emails parsed for contact and vehicle data
-   - Vehicle listing URLs extracted for reference
+   - **Email Integration (IMAP):**
+     - Email notifications for lead inquiries
+     - HTML-formatted emails parsed for contact and vehicle data
+     - Vehicle listing URLs extracted for reference
+   - **Webhook Integration:**
+     - Real-time webhook delivery for instant lead notifications
+     - Webhook endpoint: `https://[your-replit-domain]/api/webhooks/bytbil`
+     - Security: Optional webhook secret via BYTBIL_WEBHOOK_SECRET environment variable
+     - Expected payload format:
+       ```json
+       {
+         "contactName": "Customer Name",
+         "contactEmail": "customer@example.com",
+         "contactPhone": "+46701234567",
+         "vehicleTitle": "Vehicle Make Model Year",
+         "vehicleLink": "https://bytbil.com/annons/123456",
+         "listingId": "123456",
+         "message": "Customer message",
+         "anlaggning": "Falkenberg" // or "Göteborg" or "Trollhättan"
+       }
+       ```
+     - To configure in Bytbil:
+       1. Contact Bytbil support to enable webhook functionality
+       2. Provide webhook URL: `https://[your-replit-domain]/api/webhooks/bytbil`
+       3. (Optional) Set BYTBIL_WEBHOOK_SECRET environment variable and provide to Bytbil
+       4. Bytbil will send POST requests to this URL when new leads are received
 
 2. **Blocket:**
    - Email notifications for lead inquiries
