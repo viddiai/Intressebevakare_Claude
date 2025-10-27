@@ -1,342 +1,51 @@
 # Lead Management System for Recreational Vehicles
 
-## Overview
+### Overview
+This project is a full-stack CRM designed for Swedish recreational vehicle dealers. It automates lead acquisition from platforms like Bytbil.se and Blocket, and direct website inquiries, using IMAP email processing and webhooks. The system efficiently distributes leads to sales representatives via a round-robin assignment system and manages the entire sales workflow from initial contact to deal closure. Key features include role-based access control (Manager and Seller), automated lead tracking, and performance analytics. The business vision is to streamline lead management for RV dealers, enhance sales efficiency, and provide comprehensive insights into the sales pipeline.
 
-This is a full-stack lead management CRM application built for recreational vehicle dealers (caravans/motorhomes) in Sweden. The system automates lead ingestion from Bytbil.se, Blocket, and the company website via IMAP email processing and public contact forms. It distributes leads to sales representatives using round-robin assignment and provides complete workflow management from initial contact to deal closure.
-
-The application features role-based access control (Manager and Seller roles), automated email parsing, public contact form for website visitors, comprehensive lead tracking with status transitions, and analytics dashboards for performance monitoring.
-
-## User Preferences
-
+### User Preferences
 Preferred communication style: Simple, everyday language.
 
-## System Architecture
+### System Architecture
 
-### Frontend Architecture
+#### Frontend Architecture
+The frontend uses React with TypeScript, Vite, Wouter for routing, and TanStack Query for data management. It features a custom design system with Tailwind CSS, shadcn/ui components, and Inter font family, supporting light/dark modes. State management primarily relies on React Query for server state and local component state for UI. Key UI patterns include a public contact form, a dashboard with KPIs, tabbed lead list views with seller filtering, detailed lead views with notes and tasks, and manager-specific views for seller pool management and lead reassignment. Responsive design is a core principle.
 
-**Framework & Tooling:**
-- React with TypeScript for type-safe component development
-- Vite as the build tool and development server
-- Wouter for lightweight client-side routing
-- TanStack Query (React Query) for server state management and data fetching
-- shadcn/ui component library built on Radix UI primitives
-- Tailwind CSS for utility-first styling with custom design system
+#### Backend Architecture
+Built with Node.js and Express in TypeScript, the backend employs a modular route registration pattern and custom error handling. Authentication uses Replit OAuth with Passport.js and PostgreSQL for session storage, implementing role-based access control (Manager and Seller).
 
-**Design System:**
-- Custom color palette supporting light/dark modes with Swedish labels
-- Primary accent color: `hsl(12 85% 56%)` (red/orange) for CTAs and active states
-- Inter font family from Google Fonts
-- Consistent spacing using Tailwind's spacing scale
-- Custom CSS variables for theme-aware component styling
-- Hover and active state elevations using opacity-based overlays
+**Key Services:**
+-   **Lead Ingestion:**
+    -   **IMAP Email Worker:** Polls IMAP inboxes for leads from Bytbil and Blocket, parses email content using Cheerio, and prevents duplicates.
+    -   **Bytbil Webhook:** Real-time lead delivery from Bytbil via a POST endpoint with optional secret validation and Zod schema validation.
+-   **Round-Robin Assignment:** Distributes leads to sales reps based on facility-specific seller pools, with configurable seller activation/deactivation.
+-   **Lead Lifecycle Management:** Tracks lead status transitions (NY_INTRESSEANMALAN to KUND_KONTAKTAD to VUNNEN/FORLORAD), timestamps key events, and logs all changes.
+-   **Password Reset:** Secure token-based password reset via email using the Resend API.
+-   **Public Contact Form:** Unauthenticated endpoint for website visitors to submit inquiries, creating leads with automatic round-robin assignment.
 
-**State Management:**
-- React Query handles all server state (leads, users, notes, tasks, audit logs)
-- Query invalidation patterns for cache updates after mutations
-- Local component state for UI interactions (filters, search, form inputs)
-- Authentication state via `/api/auth/user` endpoint with Replit OAuth
+#### Data Storage Solutions
+PostgreSQL, hosted on Neon Serverless, is used with Drizzle ORM for type-safe schema definition and queries. The schema includes tables for users, leads, lead notes, tasks, audit logs, seller pools, password reset tokens, and sessions. Enums are used for roles, lead sources, statuses, and facilities. A storage abstraction layer centralizes database operations, supporting role-based data visibility and efficient querying.
 
-**Key UI Patterns:**
-- Public contact form (/kontakt) for website visitors to submit inquiries without authentication
-- Dashboard with KPI cards showing metrics (conversion rates, response times)
-- Lead list views with tabbed filtering (all, new, contacted, won, lost) and seller filtering:
-  - Filter by seller (all sellers, unassigned, or specific seller)
-  - Display assigned seller name or "Ej tilldelad" on each lead card
-- Detailed lead views (/leads/:id) with comprehensive information:
-  - Contact info and vehicle details display
-  - Status badges and timeline information
-  - Notes system with inline creation and history
-  - Tasks system with description, due dates, and completion tracking
-  - Activity timeline showing status changes and reassignments
-  - Manager-only reassignment UI with seller selection
-- Manager-specific views:
-  - Seller pool management (/seller-pools) to activate/deactivate sellers
-  - Lead reassignment controls in detail page
-- Responsive layouts adapting from mobile to desktop
-- Role-based navigation with conditional menu items
+#### API Routes
+The API includes public endpoints for contact forms and Bytbil webhooks, authentication routes for login/logout and password management, and protected routes for managing leads, notes, tasks, user profiles, and seller pools. Dashboard endpoints provide KPI statistics with filtering capabilities.
 
-### Backend Architecture
-
-**Framework & Runtime:**
-- Node.js with Express for HTTP server
-- TypeScript throughout with ES modules
-- Modular route registration pattern
-- Custom error handling middleware
-- Request/response logging for API endpoints
-
-**Authentication & Authorization:**
-- Replit OAuth using OpenID Connect (OIDC) protocol
-- Passport.js strategy for session management
-- PostgreSQL-backed session store (connect-pg-simple)
-- Role-based access control (RBAC) with MANAGER and SALJARE roles
-- Session cookies with 7-day TTL, httpOnly and secure flags
-- Middleware guards (`isAuthenticated`) on protected routes
-
-**Business Logic Services:**
-
-1. **Lead Ingestion Services:**
-   
-   a. **IMAP Email Worker:**
-   - ImapFlow client for polling IMAP inbox (60-second intervals)
-   - Filters by sender addresses (Bytbil, Blocket domains)
-   - Idempotency via message-ID tracking to prevent duplicate processing
-   - Pluggable parser architecture (parserBytbil, parserBlocket)
-   - HTML parsing with Cheerio for data extraction
-   - Automatic lead creation after successful parsing
-   - Marks emails as read post-processing
-   - Handles multiple facilities (Falkenberg, Göteborg, Trollhättan) with separate IMAP configurations
-   
-   b. **Bytbil Webhook Endpoint:**
-   - Real-time webhook receiver for instant lead delivery from Bytbil
-   - Webhook URL: POST `/api/webhooks/bytbil`
-   - Optional webhook secret validation (BYTBIL_WEBHOOK_SECRET env var)
-   - JSON payload validation with Zod schema
-   - Duplicate prevention via listingId matching
-   - Automatic round-robin assignment when anlaggning is provided
-   - Comprehensive logging for debugging and monitoring
-   - Complements IMAP ingestion for faster lead delivery
-
-2. **Round-Robin Assignment Service:**
-   - Separate seller pools per facility (Falkenberg, Göteborg, Trollhättan)
-   - Enable/disable sellers without removing from pool
-   - Configurable sort order for rotation sequence
-   - Queries recent leads to determine next seller in rotation
-   - Automatic assignment on lead creation if facility is known
-   - Fallback to default pool for unidentified facilities
-
-3. **Lead Lifecycle Management:**
-   - Status flow: NY_INTRESSEANMALAN → KUND_KONTAKTAD → VUNNEN/FORLORAD
-   - Timestamp tracking: createdAt, assignedAt, firstContactAt, closedAt
-   - Derived metrics: TTFCA (time to first contact), TTA (time to assignment), TTC (time to close)
-   - Audit logging for all status changes and reassignments
-   - Notes and tasks as sub-entities linked to leads
-
-4. **Password Reset Service:**
-   - Secure token generation using crypto.randomBytes (32 bytes hex)
-   - Tokens expire after 1 hour
-   - One-time use enforcement via usedAt timestamp
-   - Token validation checks expiry and previous use
-   - Automatic cleanup of expired tokens
-   - Email delivery via Resend API
-   - Sender: noreply@intressefritidscenter.se
-   - HTML-formatted reset emails with branded design
-   - API key stored in RESEND_API_KEY environment variable
-   - Smart URL generation: uses REPLIT_DOMAINS (published), REPLIT_DEV_DOMAIN (dev), or localhost
-
-5. **Public Contact Form Service:**
-   - Public endpoint (/api/public/contact) for website visitors to submit inquiries
-   - No authentication required
-   - Zod validation with optional email/message fields using z.preprocess
-   - Empty strings converted to undefined/null before validation
-   - Automatic lead creation with source="HEMSIDA"
-   - Round-robin assignment based on selected facility
-   - Success confirmation displayed to user
-
-### Data Storage Solutions
-
-**Database:**
-- PostgreSQL via Neon serverless (neon-serverless driver with WebSocket support)
-- Drizzle ORM for type-safe query building and schema definition
-- Schema-first approach with TypeScript types generated from Drizzle schemas
-- Migrations managed via drizzle-kit
-
-**Schema Design:**
-
-Core tables:
-- `users`: User profiles with role, facility (anläggning), OAuth metadata
-- `leads`: Contact information, vehicle details, source, status, facility, assignment
-- `lead_notes`: Timestamped text notes by users on leads
-- `lead_tasks`: To-do items with descriptions, due dates, completion status
-- `audit_logs`: Change history for leads (status changes, assignments)
-- `seller_pools`: Configuration for round-robin (userId, facility, isEnabled, sortOrder)
-- `password_reset_tokens`: Secure password reset tokens with expiry and one-time use tracking
-- `sessions`: Express session storage for Replit Auth
-
-Enums:
-- `role`: MANAGER, SALJARE
-- `source`: BYTBIL, BLOCKET, HEMSIDA
-- `status`: NY_INTRESSEANMALAN, KUND_KONTAKTAD, VUNNEN, FORLORAD
-- `anlaggning`: Falkenberg, Göteborg, Trollhättan
-
-**Data Access Pattern:**
-- Storage abstraction layer (`server/storage.ts`) provides interface to database
-- All database operations go through storage service
-- Query filters support role-based data visibility (sellers see only assigned leads, managers see all)
-- Efficient querying with indexes on frequently filtered columns
-- `getLeads` performs LEFT JOIN with users table to include assigned seller names (assignedToName)
-
-**API Routes:**
-
-Public:
-- POST `/api/public/contact` - Submit contact form inquiry (no authentication required)
-  - Accepts: contactName, contactEmail (optional), contactPhone, vehicleTitle, message (optional), anlaggning
-  - Creates lead with source="HEMSIDA"
-  - Assigns lead via round-robin
-
-Webhooks:
-- POST `/api/webhooks/bytbil` - Receive lead webhooks from Bytbil (no authentication required, but validates webhook secret)
-  - Security: Optional BYTBIL_WEBHOOK_SECRET environment variable for webhook authentication
-  - Headers: x-webhook-secret or Authorization: Bearer <secret>
-  - Accepts: contactName, contactEmail (optional), contactPhone (optional), vehicleTitle, vehicleLink (optional), listingId (optional), message (optional), anlaggning (optional)
-  - Creates lead with source="BYTBIL"
-  - Automatically assigns lead via round-robin if anlaggning is provided
-  - Duplicate prevention: Checks listingId to prevent duplicate leads
-  - Logs all incoming webhook payloads for debugging
-
-Authentication:
-- GET `/api/auth/user` - Get current authenticated user
-- POST `/api/auth/logout` - Logout current user
-- POST `/api/forgot-password` - Request password reset (sends reset link to email)
-- POST `/api/reset-password` - Reset password with token
-
-Leads:
-- GET `/api/leads` - List all leads (role-based filtering)
-- GET `/api/leads/:id` - Get single lead details
-- POST `/api/leads` - Create new lead (manager-only)
-- PATCH `/api/leads/:id/status` - Update lead status
-- POST `/api/leads/:id/assign` - Round-robin assignment to next available seller
-- PATCH `/api/leads/:id/assign` - Manual reassignment to specific seller (manager-only)
-
-Lead Notes:
-- GET `/api/leads/:id/notes` - List all notes for a lead
-- POST `/api/leads/:id/notes` - Create new note
-
-Lead Tasks:
-- GET `/api/leads/:id/tasks` - List all tasks for a lead
-- POST `/api/leads/:id/tasks` - Create new task
-- PATCH `/api/leads/:id/tasks/:taskId` - Update task (toggle completion)
-
-Activity & Audit:
-- GET `/api/leads/:id/activity` - Get activity timeline (audit logs) for a lead
-
-Users & Seller Pools:
-- GET `/api/users` - Get all users (manager-only)
-- PATCH `/api/users/:id/profile` - Update user profile (firstName, lastName, profileImageUrl)
-- PATCH `/api/users/:id/password` - Change user password (requires oldPassword and newPassword)
-- GET `/api/seller-pools` - Get seller pool configuration (manager-only)
-- PATCH `/api/seller-pools/:id` - Update seller pool entry (activate/deactivate)
-
-Dashboard & Analytics:
-- GET `/api/dashboard/stats` - Get dashboard KPI statistics with optional filtering
-  - Query params: `sellerId` (manager-only), `anlaggning`, `dateFrom`, `dateTo`
-  - For sellers: automatically filtered to their assigned leads
-  - For managers: optionally filter by seller, facility, or date range
-  - Returns: totalLeads, newLeads, contacted, won, lost, winRate, avgTimeToFirstContact, avgTimeToClose, leadsBySource, leadsByAnlaggning
-
-### Authentication and Authorization
-
-**OAuth Flow:**
-- Replit OAuth as primary authentication mechanism (no password storage)
-- OIDC discovery endpoint dynamically fetches provider configuration
-- Session-based authentication with PostgreSQL persistence
-- User profile synced from OAuth claims (email, firstName, lastName, profileImageUrl)
-- Upsert pattern ensures user exists in database on each login
-
-**Authorization Model:**
-- Two roles: MANAGER (full access), SALJARE (restricted to assigned leads)
-- Role stored in database, not derived from OAuth provider
-- Middleware checks user role before allowing access to manager-only endpoints
-- Frontend conditionally renders UI elements based on user role
-- API endpoints validate role permissions before returning data
-
-**Security Measures:**
-- Session secret from environment variable
-- Secure cookies (httpOnly, secure flags)
-- Password hashing with Argon2 (future-proofing for potential email/password auth)
-- CSRF protection via session-based authentication
-- Input validation using Zod schemas
+#### Authentication and Authorization
+Replit OAuth (OIDC) is the primary authentication method, syncing user profiles and using session-based authentication with PostgreSQL persistence. Authorization is role-based (MANAGER, SALJARE), enforced by middleware on API routes and reflected in the frontend UI. Security measures include secure cookies, environment variable secrets, input validation with Zod, and Argon2 for password hashing.
 
 ### External Dependencies
 
-**Third-Party Services:**
+#### Third-Party Services
+-   **Neon Database:** Serverless PostgreSQL hosting, connected via `DATABASE_URL`.
+-   **Replit Authentication:** OAuth provider for user authentication.
+-   **Email Services:**
+    -   **IMAP:** Standard IMAP for receiving lead emails from various sources.
+    -   **Resend:** Transactional email service for sending password reset emails, configured via `RESEND_API_KEY`.
 
-1. **Neon Database:**
-   - Serverless PostgreSQL hosting
-   - Connection via DATABASE_URL environment variable
-   - WebSocket support for serverless environments
+#### Third-Party APIs
+-   **Bytbil.se:**
+    -   **Email Integration:** Parses lead notification emails for data extraction.
+    -   **Webhook Integration:** Receives real-time lead data via a POST endpoint (`/api/webhooks/bytbil`), with optional secret validation.
+-   **Blocket:** Email integration for lead notifications, requiring specific parsing logic.
 
-2. **Replit Authentication:**
-   - OAuth provider (OIDC)
-   - Issuer URL: `https://replit.com/oidc`
-   - Client credentials via REPL_ID
-   - Session management handled by application
-
-3. **Email Services:**
-   - **IMAP** (for receiving): Configurable IMAP server (host, port, credentials via env vars)
-     - Supports any standard IMAP provider
-     - Optional configuration (system runs without email ingestion if not configured)
-   - **Resend** (for sending): Transactional email service for password reset emails
-     - API key stored in RESEND_API_KEY environment variable
-     - Sender domain: intressefritidscenter.se
-     - HTML-formatted branded emails
-
-**Third-Party APIs:**
-
-1. **Bytbil.se:**
-   - **Email Integration (IMAP):**
-     - Email notifications for lead inquiries
-     - HTML-formatted emails parsed for contact and vehicle data
-     - Vehicle listing URLs extracted for reference
-   - **Webhook Integration:**
-     - Real-time webhook delivery for instant lead notifications
-     - Webhook endpoint: `https://[your-replit-domain]/api/webhooks/bytbil`
-     - Security: Optional webhook secret via BYTBIL_WEBHOOK_SECRET environment variable
-     - Expected payload format:
-       ```json
-       {
-         "contactName": "Customer Name",
-         "contactEmail": "customer@example.com",
-         "contactPhone": "+46701234567",
-         "vehicleTitle": "Vehicle Make Model Year",
-         "vehicleLink": "https://bytbil.com/annons/123456",
-         "listingId": "123456",
-         "message": "Customer message",
-         "anlaggning": "Falkenberg" // or "Göteborg" or "Trollhättan"
-       }
-       ```
-     - To configure in Bytbil:
-       1. Contact Bytbil support to enable webhook functionality
-       2. Provide webhook URL: `https://[your-replit-domain]/api/webhooks/bytbil`
-       3. (Optional) Set BYTBIL_WEBHOOK_SECRET environment variable and provide to Bytbil
-       4. Bytbil will send POST requests to this URL when new leads are received
-
-2. **Blocket:**
-   - Email notifications for lead inquiries
-   - Similar HTML parsing approach
-   - Distinct email structure requiring separate parser
-
-**NPM Dependencies:**
-
-Core framework:
-- express, react, typescript, vite
-- drizzle-orm, @neondatabase/serverless
-- @tanstack/react-query
-- passport, express-session, openid-client
-
-UI components:
-- @radix-ui/* (comprehensive primitive component library)
-- tailwindcss, class-variance-authority, clsx
-- recharts (for dashboard charts)
-- lucide-react (icon library)
-
-Email processing:
-- imapflow (modern IMAP client)
-- cheerio (HTML parsing)
-- resend (transactional email service)
-
-Security:
-- argon2 (password hashing)
-- zod (schema validation)
-
-**Build & Deployment:**
-
-Development:
-- tsx for TypeScript execution without compilation
-- Vite dev server with HMR
-- Replit-specific plugins (cartographer, dev banner, runtime error modal)
-
-Production:
-- Vite builds frontend to `dist/public`
-- esbuild bundles server to `dist/index.js`
-- Single production command: `node dist/index.js`
-- Environment variables for configuration (DATABASE_URL, SESSION_SECRET, IMAP credentials, REPL_ID, RESEND_API_KEY)
+#### NPM Dependencies
+Key dependencies include `express`, `react`, `typescript`, `vite`, `drizzle-orm`, `@neondatabase/serverless`, `@tanstack/react-query`, `passport`, `express-session`, `openid-client`, `@radix-ui/*`, `tailwindcss`, `recharts`, `lucide-react`, `imapflow`, `cheerio`, `resend`, `argon2`, and `zod`.
