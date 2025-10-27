@@ -2,8 +2,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, TrendingUp, Users, Clock } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Overview() {
+  const { user } = useAuth();
+  const isManager = user?.role === "MANAGER";
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -11,7 +15,7 @@ export default function Overview() {
         <p className="text-muted-foreground mt-1">Välkommen till lead-hanteringssystemet</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className={`grid grid-cols-1 gap-6 ${isManager ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
         <Link href="/leads">
           <Card className="p-6 hover-elevate active-elevate-2 cursor-pointer" data-testid="card-nya-leads-idag">
             <div className="flex items-start justify-between">
@@ -42,20 +46,22 @@ export default function Overview() {
           </Card>
         </Link>
 
-        <Link href="/seller-pools">
-          <Card className="p-6 hover-elevate active-elevate-2 cursor-pointer" data-testid="card-aktiva-saljare">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Aktiva säljare</p>
-                <p className="text-3xl font-bold text-foreground mt-2" data-testid="value-aktiva-saljare">8</p>
-                <p className="text-sm text-muted-foreground mt-1">3 anläggningar</p>
+        {isManager && (
+          <Link href="/seller-pools">
+            <Card className="p-6 hover-elevate active-elevate-2 cursor-pointer" data-testid="card-aktiva-saljare">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Aktiva säljare</p>
+                  <p className="text-3xl font-bold text-foreground mt-2" data-testid="value-aktiva-saljare">8</p>
+                  <p className="text-sm text-muted-foreground mt-1">3 anläggningar</p>
+                </div>
+                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                  <Users className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-          </Card>
-        </Link>
+            </Card>
+          </Link>
+        )}
       </div>
 
       <Card className="p-6">
