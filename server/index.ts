@@ -72,7 +72,12 @@ app.use((req, res, next) => {
     const imapWorkers = createImapWorkers();
     if (imapWorkers.length > 0) {
       log(`Starting ${imapWorkers.length} IMAP worker(s)`);
-      imapWorkers.forEach(worker => worker.start());
+      // Start workers sequentially with a delay to avoid rate limiting
+      for (let i = 0; i < imapWorkers.length; i++) {
+        setTimeout(() => {
+          imapWorkers[i].start();
+        }, i * 3000); // 3 second delay between each worker
+      }
     } else {
       log("No IMAP workers configured");
     }

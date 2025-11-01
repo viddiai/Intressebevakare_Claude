@@ -41,7 +41,12 @@ export class ImapWorker {
           user: this.config.user,
           pass: this.config.password,
         },
-        logger: false,
+        logger: this.config.name === "Göteborg" ? {
+          debug: (...args: any[]) => console.log(`[${this.config.name} DEBUG]`, ...args),
+          info: (...args: any[]) => console.log(`[${this.config.name} INFO]`, ...args),
+          warn: (...args: any[]) => console.warn(`[${this.config.name} WARN]`, ...args),
+          error: (...args: any[]) => console.error(`[${this.config.name} ERROR]`, ...args),
+        } : false,
       });
 
       // Add error handler to prevent unhandled error events from crashing the server
@@ -52,8 +57,10 @@ export class ImapWorker {
       });
 
       const connectPromise = this.client.connect();
+      // Use longer timeout for Göteborg
+      const timeoutDuration = this.config.name === "Göteborg" ? 30000 : 15000;
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Connection timeout after 15 seconds')), 15000)
+        setTimeout(() => reject(new Error(`Connection timeout after ${timeoutDuration/1000} seconds`)), timeoutDuration)
       );
 
       await Promise.race([connectPromise, timeoutPromise]);
