@@ -17,7 +17,7 @@ import type {
   InsertSellerPool,
 } from "@shared/schema";
 import { eq, and, desc, asc, sql, lt, inArray, gte } from "drizzle-orm";
-import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { formatInTimeZone, toDate } from "date-fns-tz";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -167,7 +167,7 @@ export class DbStorage implements IStorage {
     const leadIds = result.map(row => row.lead.id);
     
     const todayStr = formatInTimeZone(new Date(), "Europe/Stockholm", "yyyy-MM-dd");
-    const todayStartSweden = fromZonedTime(`${todayStr}T00:00:00`, "Europe/Stockholm");
+    const todayStartSweden = toDate(`${todayStr}T00:00:00`, { timeZone: "Europe/Stockholm" });
     
     const nextTasks = leadIds.length > 0 ? await db
       .select({

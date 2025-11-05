@@ -16,7 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { Lead, LeadNote, LeadTask, AuditLog, User } from "@shared/schema";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
-import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { formatInTimeZone, toDate } from "date-fns-tz";
 import StatusBadge from "@/components/StatusBadge";
 
 const SWEDISH_TZ = "Europe/Stockholm";
@@ -231,8 +231,7 @@ export default function LeadDetail() {
     let dueDateTimeString: string | undefined = undefined;
     if (taskDueDate) {
       const localDateTimeString = `${taskDueDate}T${taskDueTime || "09:00"}:00`;
-      const localDate = new Date(localDateTimeString);
-      const utcDate = fromZonedTime(localDate, SWEDISH_TZ);
+      const utcDate = toDate(localDateTimeString, { timeZone: SWEDISH_TZ });
       dueDateTimeString = utcDate.toISOString();
     }
     createTaskMutation.mutate({
