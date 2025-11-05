@@ -306,6 +306,24 @@ export default function LeadDetail() {
               <p className="text-sm font-medium text-muted-foreground">Fordon</p>
               <p className="text-base" data-testid="text-vehicle-title">{lead.vehicleTitle}</p>
             </div>
+            {lead.registrationNumber && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Reg.Nr</p>
+                <p className="text-base" data-testid="text-registration-number">{lead.registrationNumber}</p>
+              </div>
+            )}
+            {lead.anlaggning && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Anläggning</p>
+                <p className="text-base" data-testid="text-anlaggning">{lead.anlaggning}</p>
+              </div>
+            )}
+            {lead.verendusId && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Verendus-ID</p>
+                <p className="text-base" data-testid="text-verendus-id">{lead.verendusId}</p>
+              </div>
+            )}
             {lead.vehicleLink && (
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Länk</p>

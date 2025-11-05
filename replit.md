@@ -24,7 +24,14 @@ Built with Node.js and Express in TypeScript, the backend employs a modular rout
 -   **Public Contact Form:** Unauthenticated endpoint for website visitors to submit inquiries, creating leads with automatic round-robin assignment.
 
 #### Data Storage Solutions
-PostgreSQL, hosted on Neon Serverless, is used with Drizzle ORM for type-safe schema definition and queries. The schema includes tables for users, leads, lead notes, tasks, audit logs, seller pools, password reset tokens, and sessions. Enums are used for roles, lead sources, statuses, and facilities. A storage abstraction layer centralizes database operations, supporting role-based data visibility and efficient querying.
+PostgreSQL, hosted on Neon Serverless, is used with Drizzle ORM for type-safe schema definition and queries. The schema includes tables for users, leads, lead notes, tasks, audit logs, seller pools, password reset tokens, and sessions. Enums are used for roles, lead sources, statuses (NY_INTRESSEANMALAN, KUND_KONTAKTAD, OFFERT_SKICKAD, VUNNEN, FORLORAD), and facilities. A storage abstraction layer centralizes database operations, supporting role-based data visibility and efficient querying.
+
+Lead objects include comprehensive vehicle information:
+- Vehicle details: title, link, registration number (Reg.Nr with Swedish format validation ABC123/ABC12D)
+- Facility assignment: Required field for anläggning (Falkenberg, Göteborg, Trollhättan)
+- External IDs: Verendus-ID for integration with external systems, listingId for Bytbil/Blocket
+- Contact information: name, email, phone
+- Status tracking with timestamps for assignment, first contact, and closure
 
 #### API Routes
 The API includes public endpoints for contact forms and Bytbil webhooks, authentication routes for login/logout and password management, and protected routes for managing leads, notes, tasks, user profiles, and seller pools. Dashboard endpoints provide KPI statistics with filtering capabilities.

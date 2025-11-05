@@ -45,6 +45,17 @@ const createLeadFormSchema = insertLeadSchema.extend({
     (val) => (val === "" || val === null || val === undefined ? undefined : val),
     z.string().optional()
   ),
+  registrationNumber: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().regex(/^[A-Z]{3}\d{2}[A-Z0-9]$|^[A-Z]{3}\d{3}$/, "Ogiltigt format. Använd t.ex. ABC123 eller ABC12D").optional()
+  ),
+  verendusId: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().optional()
+  ),
+  anlaggning: z.enum(["Falkenberg", "Göteborg", "Trollhättan"], {
+    errorMap: () => ({ message: "Anläggning krävs" }),
+  }),
 });
 
 type CreateLeadFormData = z.infer<typeof createLeadFormSchema>;
@@ -68,6 +79,7 @@ export default function CreateLead() {
       vehicleLink: "",
       listingId: "",
       registrationNumber: "",
+      verendusId: "",
       message: "",
       anlaggning: undefined,
       status: "NY_INTRESSEANMALAN",
@@ -163,20 +175,25 @@ export default function CreateLead() {
 
                 <FormField
                   control={form.control}
-                  name="anlaggning"
+                  name="assignedToId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Anläggning</FormLabel>
+                      <FormLabel>Tilldela säljare</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || undefined}>
                         <FormControl>
-                          <SelectTrigger data-testid="select-anlaggning">
-                            <SelectValue placeholder="Välj anläggning" />
+                          <SelectTrigger data-testid="select-assigned-to">
+                            <SelectValue placeholder="Välj säljare (valfritt)" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Falkenberg">Falkenberg</SelectItem>
-                          <SelectItem value="Göteborg">Göteborg</SelectItem>
-                          <SelectItem value="Trollhättan">Trollhättan</SelectItem>
+                          <SelectItem value="unassigned">Ingen tilldelning</SelectItem>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.firstName && user.lastName 
+                                ? `${user.firstName} ${user.lastName}` 
+                                : user.email}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -184,34 +201,6 @@ export default function CreateLead() {
                   )}
                 />
               </div>
-
-              <FormField
-                control={form.control}
-                name="assignedToId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tilldela säljare</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || undefined}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-assigned-to">
-                          <SelectValue placeholder="Välj säljare (valfritt)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="unassigned">Ingen tilldelning</SelectItem>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.firstName && user.lastName 
-                              ? `${user.firstName} ${user.lastName}` 
-                              : user.email}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-foreground" data-testid="text-section-contact">Kontaktinformation</h3>
@@ -285,7 +274,7 @@ export default function CreateLead() {
                   name="vehicleTitle"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Fordonstitel *</FormLabel>
+                      <FormLabel>Fordon *</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="T.ex. BMW X5 2024"
@@ -297,47 +286,6 @@ export default function CreateLead() {
                     </FormItem>
                   )}
                 />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="vehicleLink"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Fordonslänk</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="url"
-                            placeholder="https://..."
-                            {...field}
-                            value={field.value || ""}
-                            data-testid="input-vehicle-link"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="listingId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Verendus-ID</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="ID från Bytbil/Blocket"
-                            {...field}
-                            value={field.value || ""}
-                            data-testid="input-listing-id"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
 
                 <FormField
                   control={form.control}
@@ -351,6 +299,68 @@ export default function CreateLead() {
                           {...field}
                           value={field.value || ""}
                           data-testid="input-registration-number"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="anlaggning"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Anläggning *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || undefined}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-anlaggning-vehicle">
+                            <SelectValue placeholder="Välj anläggning" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Falkenberg">Falkenberg</SelectItem>
+                          <SelectItem value="Göteborg">Göteborg</SelectItem>
+                          <SelectItem value="Trollhättan">Trollhättan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="verendusId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Verendus-ID</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="ID"
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-verendus-id"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="vehicleLink"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Länk</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://..."
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-vehicle-link"
                         />
                       </FormControl>
                       <FormMessage />

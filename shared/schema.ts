@@ -53,6 +53,7 @@ export const leads = pgTable("leads", {
   vehicleLink: text("vehicle_link"),
   listingId: text("listing_id"),
   registrationNumber: text("registration_number"),
+  verendusId: text("verendus_id"),
   
   message: text("message"),
   inquiryDateTime: text("inquiry_date_time"),
