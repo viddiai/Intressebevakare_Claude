@@ -116,6 +116,14 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   usedAt: timestamp("used_at"),
 });
 
+export const statusChangeHistory = pgTable("status_change_history", {
+  id: varchar("id", { length: 255 }).primaryKey().default(sql`gen_random_uuid()`),
+  sellerPoolId: varchar("seller_pool_id", { length: 255 }).notNull().references(() => sellerPools.id, { onDelete: "cascade" }),
+  changedById: varchar("changed_by_id", { length: 255 }).notNull().references(() => users.id),
+  newStatus: boolean("new_status").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -273,3 +281,14 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 
 export type InsertSellerPool = z.infer<typeof insertSellerPoolSchema>;
 export type SellerPool = typeof sellerPools.$inferSelect;
+
+export const insertStatusChangeHistorySchema = createInsertSchema(statusChangeHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertStatusChangeHistory = z.infer<typeof insertStatusChangeHistorySchema>;
+export type StatusChangeHistory = typeof statusChangeHistory.$inferSelect;
+export type StatusChangeHistoryWithUser = StatusChangeHistory & {
+  changedByName: string | null;
+};

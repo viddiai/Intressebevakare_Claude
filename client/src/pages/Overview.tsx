@@ -1,12 +1,26 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, TrendingUp, Users, Clock } from "lucide-react";
-import { Link } from "wouter";
+import { ArrowRight, TrendingUp, Users, Clock, AlertTriangle, Power } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import type { SellerPool } from "@shared/schema";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Overview() {
   const { user } = useAuth();
   const isManager = user?.role === "MANAGER";
+  const [, setLocation] = useLocation();
+
+  // Fetch user's seller pools
+  const { data: allSellerPools = [] } = useQuery<SellerPool[]>({
+    queryKey: ["/api/seller-pools"],
+    enabled: isManager,
+  });
+
+  // Filter pools for current user and check if any are inactive
+  const userPools = allSellerPools.filter(pool => pool.userId === user?.id);
+  const hasInactivePools = userPools.some(pool => !pool.isEnabled);
 
   return (
     <div className="p-6 space-y-6">
@@ -14,6 +28,27 @@ export default function Overview() {
         <h1 className="text-3xl font-bold text-foreground">Översikt</h1>
         <p className="text-muted-foreground mt-1">Välkommen till lead-hanteringssystemet</p>
       </div>
+
+      {hasInactivePools && (
+        <Alert className="border-yellow-600 bg-yellow-50 dark:bg-yellow-950/30" data-testid="alert-inactive-status">
+          <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span className="text-yellow-800 dark:text-yellow-200">
+              Du är för närvarande inaktiv på en eller flera anläggningar. Du får inga nya leads.
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="shrink-0"
+              onClick={() => setLocation("/settings")}
+              data-testid="button-go-to-settings"
+            >
+              <Power className="w-4 h-4 mr-2" />
+              Gå till inställningar
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className={`grid grid-cols-1 gap-6 ${isManager ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
         <Link href="/leads">

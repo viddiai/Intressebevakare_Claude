@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, leads, leadNotes, leadTasks, auditLogs, sellerPools, passwordResetTokens } from "@shared/schema";
+import { users, leads, leadNotes, leadTasks, auditLogs, sellerPools, passwordResetTokens, statusChangeHistory } from "@shared/schema";
 import type {
   User,
   InsertUser,
@@ -15,6 +15,9 @@ import type {
   InsertAuditLog,
   SellerPool,
   InsertSellerPool,
+  StatusChangeHistory,
+  StatusChangeHistoryWithUser,
+  InsertStatusChangeHistory,
 } from "@shared/schema";
 import { eq, and, desc, asc, sql, lt, inArray, gte } from "drizzle-orm";
 import { formatInTimeZone, toDate } from "date-fns-tz";
@@ -59,6 +62,10 @@ export interface IStorage {
   updateSellerPool(id: string, data: Partial<InsertSellerPool>): Promise<SellerPool | undefined>;
   deleteSellerPool(id: string): Promise<void>;
   syncUserFacilities(userId: string, anlaggningar: string[]): Promise<void>;
+  
+  createStatusChangeHistory(history: InsertStatusChangeHistory): Promise<StatusChangeHistory>;
+  getStatusChangeHistoryBySellerPool(sellerPoolId: string): Promise<StatusChangeHistoryWithUser[]>;
+  getLatestStatusChangeBySellerPool(sellerPoolId: string): Promise<StatusChangeHistoryWithUser | undefined>;
   
   getDashboardStats(filters?: {
     userId?: string;
@@ -423,6 +430,55 @@ export class DbStorage implements IStorage {
     for (const pool of facilitiesToRemove) {
       await this.deleteSellerPool(pool.id);
     }
+  }
+
+  async createStatusChangeHistory(history: InsertStatusChangeHistory): Promise<StatusChangeHistory> {
+    const [statusChange] = await db.insert(statusChangeHistory).values(history).returning();
+    return statusChange;
+  }
+
+  async getStatusChangeHistoryBySellerPool(sellerPoolId: string): Promise<StatusChangeHistoryWithUser[]> {
+    const result = await db
+      .select({
+        history: statusChangeHistory,
+        changedByFirstName: users.firstName,
+        changedByLastName: users.lastName,
+      })
+      .from(statusChangeHistory)
+      .leftJoin(users, eq(statusChangeHistory.changedById, users.id))
+      .where(eq(statusChangeHistory.sellerPoolId, sellerPoolId))
+      .orderBy(desc(statusChangeHistory.createdAt));
+
+    return result.map(row => ({
+      ...row.history,
+      changedByName: row.changedByFirstName && row.changedByLastName
+        ? `${row.changedByFirstName} ${row.changedByLastName}`
+        : null,
+    }));
+  }
+
+  async getLatestStatusChangeBySellerPool(sellerPoolId: string): Promise<StatusChangeHistoryWithUser | undefined> {
+    const result = await db
+      .select({
+        history: statusChangeHistory,
+        changedByFirstName: users.firstName,
+        changedByLastName: users.lastName,
+      })
+      .from(statusChangeHistory)
+      .leftJoin(users, eq(statusChangeHistory.changedById, users.id))
+      .where(eq(statusChangeHistory.sellerPoolId, sellerPoolId))
+      .orderBy(desc(statusChangeHistory.createdAt))
+      .limit(1);
+
+    if (result.length === 0) return undefined;
+
+    const row = result[0];
+    return {
+      ...row.history,
+      changedByName: row.changedByFirstName && row.changedByLastName
+        ? `${row.changedByFirstName} ${row.changedByLastName}`
+        : null,
+    };
   }
 
   async getDashboardStats(filters?: {

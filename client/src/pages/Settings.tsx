@@ -5,15 +5,116 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Loader2, Upload, Lock } from "lucide-react";
+import { Loader2, Upload, Lock, Power, AlertCircle, Clock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import type { SellerPool, StatusChangeHistoryWithUser } from "@shared/schema";
+import { formatDistanceToNow } from "date-fns";
+import { sv } from "date-fns/locale";
+
+// Separate component for seller pool status to comply with hooks rules
+function SellerPoolStatus({ pool, userId }: { pool: SellerPool; userId: string }) {
+  const { toast } = useToast();
+  
+  const { data: history = [] } = useQuery<StatusChangeHistoryWithUser[]>({
+    queryKey: ["/api/seller-pools", pool.id, "status-history"],
+  });
+  const latestChange = history[0];
+  
+  const updateSellerPoolStatusMutation = useMutation({
+    mutationFn: async (data: { poolId: number; isEnabled: boolean }) => {
+      return apiRequest("PATCH", `/api/my-seller-pools/${data.poolId}/status`, { 
+        isEnabled: data.isEnabled 
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/seller-pools"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/seller-pools", pool.id, "status-history"] });
+      toast({
+        title: "Status uppdaterad",
+        description: "Din tillgänglighetsstatus har ändrats.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Fel",
+        description: "Kunde inte uppdatera status. Försök igen.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <div className="space-y-4 pb-4 border-b last:border-0 last:pb-0">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Label htmlFor={`pool-status-${pool.id}`} className="text-base font-medium">
+              {pool.anlaggning}
+            </Label>
+            {pool.isEnabled ? (
+              <Badge variant="default" className="bg-green-600" data-testid={`badge-status-active-${pool.id}`}>
+                Aktiv
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-red-600 border-red-600" data-testid={`badge-status-inactive-${pool.id}`}>
+                Inaktiv
+              </Badge>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {pool.isEnabled 
+              ? "Du får nya leads via round-robin" 
+              : "Du får inga nya leads automatiskt"}
+          </p>
+        </div>
+        <Switch
+          id={`pool-status-${pool.id}`}
+          checked={pool.isEnabled}
+          onCheckedChange={(checked) => {
+            updateSellerPoolStatusMutation.mutate({
+              poolId: pool.id,
+              isEnabled: checked,
+            });
+          }}
+          disabled={updateSellerPoolStatusMutation.isPending}
+          data-testid={`switch-availability-${pool.id}`}
+        />
+      </div>
+
+      {latestChange && (
+        <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/30 p-3 rounded-md">
+          <Clock className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <p>
+              <span className="font-medium">Senast ändrad:</span>{" "}
+              {formatDistanceToNow(new Date(latestChange.createdAt), { 
+                addSuffix: true, 
+                locale: sv 
+              })}
+            </p>
+            {latestChange.changedByName && (
+              <p className="mt-0.5">
+                <span className="font-medium">Av:</span>{" "}
+                {latestChange.changedById === userId 
+                  ? "Dig själv" 
+                  : latestChange.changedByName}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "Förnamn krävs").optional(),
@@ -40,6 +141,14 @@ export default function Settings() {
   
   const [role, setRole] = useState(user?.role || "SALJARE");
   const [anlaggning, setAnlaggning] = useState(user?.anlaggning || "");
+
+  // Fetch user's seller pools (available to all users)
+  const { data: allSellerPools = [] } = useQuery<SellerPool[]>({
+    queryKey: ["/api/seller-pools"],
+  });
+
+  // Filter pools for current user
+  const userPools = allSellerPools.filter(pool => pool.userId === user?.id);
 
   const profileForm = useForm({
     resolver: zodResolver(profileSchema),
@@ -315,6 +424,30 @@ export default function Settings() {
           </Button>
         </CardContent>
       </Card>
+
+      {userPools.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Power className="w-5 h-5" />
+              Min tillgänglighet
+            </CardTitle>
+            <CardDescription>Hantera din status för nya leads</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {userPools.map((pool) => (
+              <SellerPoolStatus key={pool.id} pool={pool} userId={user?.id || ""} />
+            ))}
+
+            <div className="flex items-start gap-2 text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/30 p-3 rounded-md">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <p>
+                När du är inaktiv tilldelas inga nya leads till dig. Du kan när som helst aktivera eller inaktivera din status.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

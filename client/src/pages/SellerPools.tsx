@@ -4,17 +4,117 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Users } from "lucide-react";
+import { Loader2, Users, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import type { SellerPool, User } from "@shared/schema";
+import type { SellerPool, User, StatusChangeHistoryWithUser } from "@shared/schema";
+import { formatDistanceToNow } from "date-fns";
+import { sv } from "date-fns/locale";
 
 interface SellerPoolWithUser extends SellerPool {
   user?: User;
 }
 
-export default function SellerPools() {
+// Separate component for pool item to comply with hooks rules
+function PoolItem({ pool, resource }: { pool: SellerPool; resource?: User }) {
   const { toast } = useToast();
+  
+  const { data: history = [] } = useQuery<StatusChangeHistoryWithUser[]>({
+    queryKey: ["/api/seller-pools", pool.id, "status-history"],
+  });
+  const latestChange = history[0];
+  
+  const togglePoolMutation = useMutation({
+    mutationFn: async ({ poolId, isEnabled }: { poolId: number; isEnabled: boolean }) => {
+      return apiRequest("PATCH", `/api/seller-pools/${poolId}/status`, { isEnabled });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/seller-pools"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/seller-pools", pool.id, "status-history"] });
+      toast({
+        title: "Status uppdaterad",
+        description: `${resource?.firstName || "Resursen"} har ${pool.isEnabled ? "aktiverats" : "inaktiverats"}.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Fel",
+        description: "Kunde inte uppdatera status. Försök igen.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <div
+      className="p-3 bg-muted rounded-md space-y-2"
+      data-testid={`pool-item-${pool.id}`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="font-medium text-sm" data-testid={`text-seller-name-${pool.id}`}>
+            {resource ? `${resource.firstName} ${resource.lastName}` : "Okänd resurs"}
+          </p>
+          <p className="text-xs text-muted-foreground" data-testid={`text-seller-email-${pool.id}`}>
+            {resource?.email || "Ingen e-post"}
+          </p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {resource?.role === "MANAGER" ? (
+              <Badge variant="default" className="text-xs bg-primary" data-testid={`badge-role-${pool.id}`}>
+                Manager
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs" data-testid={`badge-role-${pool.id}`}>
+                Säljare
+              </Badge>
+            )}
+            <Badge variant="outline" className="text-xs" data-testid={`badge-sort-order-${pool.id}`}>
+              #{pool.sortOrder}
+            </Badge>
+            {pool.isEnabled ? (
+              <Badge variant="default" className="text-xs bg-green-600" data-testid={`badge-enabled-${pool.id}`}>
+                Aktiv
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs" data-testid={`badge-disabled-${pool.id}`}>
+                Inaktiv
+              </Badge>
+            )}
+          </div>
+        </div>
+        <Switch
+          checked={pool.isEnabled}
+          onCheckedChange={(checked) => {
+            togglePoolMutation.mutate({
+              poolId: pool.id,
+              isEnabled: checked,
+            });
+          }}
+          disabled={togglePoolMutation.isPending}
+          data-testid={`switch-pool-${pool.id}`}
+        />
+      </div>
+      
+      {latestChange && (
+        <div className="flex items-start gap-2 text-xs text-muted-foreground pt-2 border-t">
+          <Clock className="w-3 h-3 mt-0.5 flex-shrink-0" />
+          <div>
+            <p>
+              <span className="font-medium">Ändrad av:</span>{" "}
+              {latestChange.changedByName || "Okänd"} -{" "}
+              {formatDistanceToNow(new Date(latestChange.createdAt), { 
+                addSuffix: true, 
+                locale: sv 
+              })}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function SellerPools() {
   const { user } = useAuth();
 
   const { data: sellerPools = [], isLoading } = useQuery<SellerPoolWithUser[]>({
@@ -23,26 +123,6 @@ export default function SellerPools() {
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
-  });
-
-  const togglePoolMutation = useMutation({
-    mutationFn: async ({ poolId, isEnabled }: { poolId: string; isEnabled: boolean }) => {
-      return await apiRequest("PATCH", `/api/seller-pools/${poolId}`, { isEnabled });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/seller-pools"] });
-      toast({
-        title: "Uppdaterad",
-        description: "Resurspoolens status har uppdaterats",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Fel",
-        description: "Kunde inte uppdatera resurspoolens status",
-        variant: "destructive",
-      });
-    },
   });
 
   if (user?.role !== "MANAGER") {
@@ -101,59 +181,9 @@ export default function SellerPools() {
               ) : (
                 pools
                   .sort((a, b) => a.sortOrder - b.sortOrder)
-                  .map((pool) => {
-                    const resource = getUserById(pool.userId);
-                    return (
-                      <div
-                        key={pool.id}
-                        className="flex items-center justify-between p-3 bg-muted rounded-md"
-                        data-testid={`pool-item-${pool.id}`}
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium text-sm" data-testid={`text-seller-name-${pool.id}`}>
-                            {resource ? `${resource.firstName} ${resource.lastName}` : "Okänd resurs"}
-                          </p>
-                          <p className="text-xs text-muted-foreground" data-testid={`text-seller-email-${pool.id}`}>
-                            {resource?.email || "Ingen e-post"}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            {resource?.role === "MANAGER" ? (
-                              <Badge variant="default" className="text-xs bg-primary" data-testid={`badge-role-${pool.id}`}>
-                                Manager
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-xs" data-testid={`badge-role-${pool.id}`}>
-                                Säljare
-                              </Badge>
-                            )}
-                            <Badge variant="outline" className="text-xs" data-testid={`badge-sort-order-${pool.id}`}>
-                              #{pool.sortOrder}
-                            </Badge>
-                            {pool.isEnabled ? (
-                              <Badge variant="default" className="text-xs bg-green-600" data-testid={`badge-enabled-${pool.id}`}>
-                                Aktiv
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs" data-testid={`badge-disabled-${pool.id}`}>
-                                Inaktiv
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <Switch
-                          checked={pool.isEnabled}
-                          onCheckedChange={(checked) => {
-                            togglePoolMutation.mutate({
-                              poolId: pool.id,
-                              isEnabled: checked,
-                            });
-                          }}
-                          disabled={togglePoolMutation.isPending}
-                          data-testid={`switch-pool-${pool.id}`}
-                        />
-                      </div>
-                    );
-                  })
+                  .map((pool) => (
+                    <PoolItem key={pool.id} pool={pool} resource={getUserById(pool.userId)} />
+                  ))
               )}
             </CardContent>
           </Card>

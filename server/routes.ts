@@ -981,10 +981,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const validatedData = updateSchema.parse(req.body);
+      
+      // Get current pool state for logging
+      const currentPoolQuery = await storage.getSellerPools();
+      const currentPool = currentPoolQuery.find(p => p.id === req.params.id);
+      
       const pool = await storage.updateSellerPool(req.params.id, validatedData);
       
       if (!pool) {
         return res.status(404).json({ message: "Seller pool not found" });
+      }
+
+      // Log status change if isEnabled was changed
+      if (validatedData.isEnabled !== undefined && currentPool && currentPool.isEnabled !== validatedData.isEnabled) {
+        await storage.createStatusChangeHistory({
+          sellerPoolId: pool.id,
+          changedById: userId,
+          newStatus: validatedData.isEnabled,
+        });
       }
 
       res.json(pool);
@@ -994,6 +1008,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error updating seller pool:", error);
       res.status(500).json({ message: "Failed to update seller pool" });
+    }
+  });
+
+  app.patch('/api/my-seller-pools/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Användare hittades inte" });
+      }
+
+      const statusSchema = z.object({
+        isEnabled: z.boolean(),
+      });
+
+      const validatedData = statusSchema.parse(req.body);
+      
+      // Get the seller pool to verify ownership
+      const allPools = await storage.getSellerPools();
+      const pool = allPools.find(p => p.id === req.params.id);
+      
+      if (!pool) {
+        return res.status(404).json({ message: "Resurspool hittades inte" });
+      }
+
+      // Verify the pool belongs to the current user
+      if (pool.userId !== userId) {
+        return res.status(403).json({ message: "Du kan bara ändra din egen status" });
+      }
+
+      const updatedPool = await storage.updateSellerPool(req.params.id, { isEnabled: validatedData.isEnabled });
+      
+      if (!updatedPool) {
+        return res.status(404).json({ message: "Resurspool hittades inte" });
+      }
+
+      // Log the status change
+      await storage.createStatusChangeHistory({
+        sellerPoolId: updatedPool.id,
+        changedById: userId,
+        newStatus: validatedData.isEnabled,
+      });
+
+      res.json(updatedPool);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Valideringsfel", errors: error.errors });
+      }
+      console.error("Error updating own seller pool status:", error);
+      res.status(500).json({ message: "Misslyckades att uppdatera status" });
+    }
+  });
+
+  app.get('/api/seller-pools/:id/status-history', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const history = await storage.getStatusChangeHistoryBySellerPool(req.params.id);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching status change history:", error);
+      res.status(500).json({ message: "Failed to fetch status change history" });
     }
   });
 
