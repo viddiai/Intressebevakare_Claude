@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { formatInTimeZone } from "date-fns-tz";
 import type { LeadWithAssignedTo, User } from "@shared/schema";
+
+const SWEDISH_TZ = "Europe/Stockholm";
 
 export default function LeadsList() {
   const [activeTab, setActiveTab] = useState("all");
@@ -148,7 +151,7 @@ export default function LeadsList() {
                 source={lead.source}
                 location={lead.anlaggning || ""}
                 status={lead.status}
-                createdAt={lead.createdAt.toString().split('T')[0]}
+                createdAt={formatInTimeZone(new Date(lead.createdAt), SWEDISH_TZ, "yyyy-MM-dd HH:mm")}
                 assignedTo={lead.assignedToName || (lead.assignedToId ? "Tilldelad" : undefined)}
                 vehicleLink={lead.vehicleLink || undefined}
                 onViewDetails={() => {
