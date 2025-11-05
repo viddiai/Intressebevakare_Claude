@@ -108,7 +108,7 @@ export default function LeadsList() {
           data-testid="button-create-lead"
         >
           <Plus className="w-4 h-4" />
-          Skapa lead
+          Skapa nytt lead
         </Button>
       </div>
 
