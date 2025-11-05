@@ -9,7 +9,18 @@ Preferred communication style: Simple, everyday language.
 ### System Architecture
 
 #### Frontend Architecture
-The frontend uses React with TypeScript, Vite, Wouter for routing, and TanStack Query for data management. It features a custom design system with Tailwind CSS, shadcn/ui components, and Inter font family, supporting light/dark modes. State management primarily relies on React Query for server state and local component state for UI. Key UI patterns include a public contact form, a dashboard with KPIs, tabbed lead list views with seller filtering and timestamp display (YYYY-MM-DD HH:MM format in Swedish timezone), detailed lead views with notes and tasks, and manager-specific views for seller pool management and lead reassignment. Responsive design is a core principle.
+The frontend uses React with TypeScript, Vite, Wouter for routing, and TanStack Query for data management. It features a custom design system with Tailwind CSS, shadcn/ui components, and Inter font family, supporting light/dark modes. State management primarily relies on React Query for server state and local component state for UI. Key UI patterns include a public contact form, a dashboard with KPIs, tabbed lead list views with seller filtering, timestamp display (YYYY-MM-DD HH:MM format in Swedish timezone), and next task display with visual priority indicators, detailed lead views with notes and tasks, and manager-specific views for seller pool management and lead reassignment. Responsive design is a core principle.
+
+**Next Task Feature:**
+- Each lead card displays the next upcoming task (earliest future/today's task)
+- Visual priority indicators:
+  - Overdue (red): AlertCircle icon, red background
+  - Today (yellow): Clock icon, yellow background  
+  - Within 2 days (orange): Clock icon, orange background
+  - Future (normal): Clock icon, neutral background
+- Leads sorted by next task date (earliest first), leads without tasks appear last
+- Filter toggle: "Uppgifter idag" shows only leads with tasks due today
+- Fallback message: "Inga planerade uppgifter" when no upcoming tasks
 
 #### Backend Architecture
 Built with Node.js and Express in TypeScript, the backend employs a modular route registration pattern and custom error handling. Authentication uses Replit OAuth with Passport.js and PostgreSQL for session storage, implementing role-based access control (Manager and Seller).

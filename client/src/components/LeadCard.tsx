@@ -1,7 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import StatusBadge, { type LeadStatus } from "./StatusBadge";
-import { MapPin, Calendar, ExternalLink, User, Car } from "lucide-react";
+import { MapPin, Calendar, ExternalLink, User, Car, Clock, AlertCircle } from "lucide-react";
+import { formatInTimeZone } from "date-fns-tz";
+import { isToday, isPast, differenceInDays } from "date-fns";
+
+const SWEDISH_TZ = "Europe/Stockholm";
 
 interface LeadCardProps {
   id: string;
@@ -16,6 +20,11 @@ interface LeadCardProps {
   assignedTo?: string;
   vehicleLink?: string;
   nextStep?: string;
+  nextTask?: {
+    id: string;
+    description: string;
+    dueDate: Date;
+  } | null;
   onViewDetails?: () => void;
   onAssign?: () => void;
 }
@@ -33,6 +42,7 @@ export default function LeadCard({
   assignedTo,
   vehicleLink,
   nextStep,
+  nextTask,
   onViewDetails,
   onAssign
 }: LeadCardProps) {
@@ -47,6 +57,23 @@ export default function LeadCard({
     if (source === "BLOCKET") return "Blocket";
     if (source === "EGET") return "Eget lead";
     return "Hemsidan";
+  };
+
+  const getTaskPriority = (dueDate: Date) => {
+    const taskDate = new Date(dueDate);
+    const now = new Date();
+    
+    if (isPast(taskDate) && !isToday(taskDate)) {
+      return { type: "overdue", color: "text-destructive", bgColor: "bg-destructive/10", icon: AlertCircle };
+    }
+    if (isToday(taskDate)) {
+      return { type: "today", color: "text-yellow-600 dark:text-yellow-500", bgColor: "bg-yellow-100 dark:bg-yellow-950", icon: Clock };
+    }
+    const daysUntil = differenceInDays(taskDate, now);
+    if (daysUntil <= 2) {
+      return { type: "soon", color: "text-orange-600 dark:text-orange-500", bgColor: "bg-orange-100 dark:bg-orange-950", icon: Clock };
+    }
+    return { type: "future", color: "text-muted-foreground", bgColor: "bg-muted/50", icon: Clock };
   };
 
   return (
@@ -101,6 +128,38 @@ export default function LeadCard({
             {assignedTo || "Ej tilldelad"}
           </span>
         </div>
+
+        {nextTask ? (
+          (() => {
+            const priority = getTaskPriority(nextTask.dueDate);
+            const TaskIcon = priority.icon;
+            return (
+              <div 
+                className={`${priority.bgColor} p-3 rounded-md border border-border/50`}
+                data-testid={`lead-next-task-${id}`}
+              >
+                <div className="flex items-start gap-2">
+                  <TaskIcon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${priority.color}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">
+                      <span className={`font-medium ${priority.color}`}>Nästa: </span>
+                      <span className="text-foreground">{nextTask.description}</span>
+                    </p>
+                    <p className={`text-xs mt-1 ${priority.color}`}>
+                      {formatInTimeZone(new Date(nextTask.dueDate), SWEDISH_TZ, "yyyy-MM-dd HH:mm")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()
+        ) : (
+          <div className="bg-muted/30 p-3 rounded-md border border-border/30">
+            <p className="text-sm text-muted-foreground">
+              Inga planerade uppgifter
+            </p>
+          </div>
+        )}
 
         {nextStep && (
           <div className="bg-muted/50 p-3 rounded-md">

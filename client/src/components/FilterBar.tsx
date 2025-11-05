@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, CalendarCheck } from "lucide-react";
 
 interface FilterBarProps {
   searchValue?: string;
@@ -19,6 +19,8 @@ interface FilterBarProps {
   sellerFilter?: string;
   onSellerChange?: (value: string) => void;
   sellers?: Array<{ id: string; firstName: string | null; lastName: string | null }>;
+  showOnlyTasksToday?: boolean;
+  onShowOnlyTasksTodayChange?: (value: boolean) => void;
 }
 
 export default function FilterBar({
@@ -31,6 +33,8 @@ export default function FilterBar({
   sellerFilter = "all",
   onSellerChange,
   sellers = [],
+  showOnlyTasksToday = false,
+  onShowOnlyTasksTodayChange,
 }: FilterBarProps) {
   const sortedSellers = [...sellers].sort((a, b) => {
     const nameA = a.firstName || "";
@@ -92,8 +96,14 @@ export default function FilterBar({
         </SelectContent>
       </Select>
 
-      <Button variant="outline" size="icon" data-testid="button-filter">
-        <Filter className="w-4 h-4" />
+      <Button 
+        variant={showOnlyTasksToday ? "default" : "outline"} 
+        className="gap-2 whitespace-nowrap"
+        onClick={() => onShowOnlyTasksTodayChange?.(!showOnlyTasksToday)}
+        data-testid="button-filter-tasks-today"
+      >
+        <CalendarCheck className="w-4 h-4" />
+        <span className="hidden sm:inline">Uppgifter idag</span>
       </Button>
     </div>
   );

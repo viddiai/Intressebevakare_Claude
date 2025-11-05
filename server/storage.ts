@@ -16,7 +16,8 @@ import type {
   SellerPool,
   InsertSellerPool,
 } from "@shared/schema";
-import { eq, and, desc, asc, sql, lt } from "drizzle-orm";
+import { eq, and, desc, asc, sql, lt, inArray, gte } from "drizzle-orm";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -163,11 +164,46 @@ export class DbStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(leads.createdAt));
     
+    const leadIds = result.map(row => row.lead.id);
+    
+    const todayStr = formatInTimeZone(new Date(), "Europe/Stockholm", "yyyy-MM-dd");
+    const todayStartSweden = fromZonedTime(`${todayStr}T00:00:00`, "Europe/Stockholm");
+    
+    const nextTasks = leadIds.length > 0 ? await db
+      .select({
+        leadId: leadTasks.leadId,
+        id: leadTasks.id,
+        description: leadTasks.description,
+        dueDate: leadTasks.dueDate,
+      })
+      .from(leadTasks)
+      .where(
+        and(
+          inArray(leadTasks.leadId, leadIds),
+          eq(leadTasks.isCompleted, false),
+          sql`${leadTasks.dueDate} IS NOT NULL`,
+          gte(leadTasks.dueDate, todayStartSweden)
+        )
+      )
+      .orderBy(asc(leadTasks.dueDate)) : [];
+    
+    const nextTasksByLead = new Map<string, { id: string; description: string; dueDate: Date }>();
+    for (const task of nextTasks) {
+      if (!nextTasksByLead.has(task.leadId)) {
+        nextTasksByLead.set(task.leadId, {
+          id: task.id,
+          description: task.description,
+          dueDate: task.dueDate!,
+        });
+      }
+    }
+    
     return result.map(row => ({
       ...row.lead,
       assignedToName: row.assignedToFirstName && row.assignedToLastName
         ? `${row.assignedToFirstName} ${row.assignedToLastName}`
-        : null
+        : null,
+      nextTask: nextTasksByLead.get(row.lead.id) || null
     }));
   }
 

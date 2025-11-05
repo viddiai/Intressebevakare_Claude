@@ -243,7 +243,14 @@ export type User = typeof users.$inferSelect;
 
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type Lead = typeof leads.$inferSelect;
-export type LeadWithAssignedTo = Lead & { assignedToName: string | null };
+export type LeadWithAssignedTo = Lead & { 
+  assignedToName: string | null;
+  nextTask?: {
+    id: string;
+    description: string;
+    dueDate: Date;
+  } | null;
+};
 
 export type InsertLeadNote = z.infer<typeof insertLeadNoteSchema>;
 export type LeadNote = typeof leadNotes.$inferSelect;

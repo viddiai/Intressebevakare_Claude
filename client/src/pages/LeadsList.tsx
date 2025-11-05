@@ -9,6 +9,7 @@ import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { formatInTimeZone } from "date-fns-tz";
+import { isToday } from "date-fns";
 import type { LeadWithAssignedTo, User } from "@shared/schema";
 
 const SWEDISH_TZ = "Europe/Stockholm";
@@ -19,6 +20,7 @@ export default function LeadsList() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [sellerFilter, setSellerFilter] = useState("all");
+  const [showOnlyTasksToday, setShowOnlyTasksToday] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -53,7 +55,7 @@ export default function LeadsList() {
   const filteredLeads = useMemo(() => {
     if (!leads) return [];
 
-    return leads.filter((lead) => {
+    const filtered = leads.filter((lead) => {
       const matchesTab = activeTab === "all" || 
         (activeTab === "new" && lead.status === "NY_INTRESSEANMALAN") ||
         (activeTab === "contacted" && lead.status === "KUND_KONTAKTAD") ||
@@ -73,9 +75,21 @@ export default function LeadsList() {
         (sellerFilter === "unassigned" && !lead.assignedToId) ||
         (sellerFilter !== "unassigned" && lead.assignedToId === sellerFilter);
 
-      return matchesTab && matchesSearch && matchesSource && matchesLocation && matchesSeller;
+      const matchesTaskToday = !showOnlyTasksToday || 
+        (lead.nextTask && isToday(new Date(lead.nextTask.dueDate)));
+
+      return matchesTab && matchesSearch && matchesSource && matchesLocation && matchesSeller && matchesTaskToday;
     });
-  }, [leads, activeTab, search, sourceFilter, locationFilter, sellerFilter]);
+
+    return filtered.sort((a, b) => {
+      if (a.nextTask && !b.nextTask) return -1;
+      if (!a.nextTask && b.nextTask) return 1;
+      if (a.nextTask && b.nextTask) {
+        return new Date(a.nextTask.dueDate).getTime() - new Date(b.nextTask.dueDate).getTime();
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [leads, activeTab, search, sourceFilter, locationFilter, sellerFilter, showOnlyTasksToday]);
 
   const counts = useMemo(() => {
     if (!leads) return { all: 0, new: 0, contacted: 0, quote: 0, won: 0, lost: 0 };
@@ -131,6 +145,8 @@ export default function LeadsList() {
         sellerFilter={sellerFilter}
         onSellerChange={setSellerFilter}
         sellers={users || []}
+        showOnlyTasksToday={showOnlyTasksToday}
+        onShowOnlyTasksTodayChange={setShowOnlyTasksToday}
       />
 
       <div className="space-y-4">
@@ -154,6 +170,7 @@ export default function LeadsList() {
                 createdAt={formatInTimeZone(new Date(lead.createdAt), SWEDISH_TZ, "yyyy-MM-dd HH:mm")}
                 assignedTo={lead.assignedToName || (lead.assignedToId ? "Tilldelad" : undefined)}
                 vehicleLink={lead.vehicleLink || undefined}
+                nextTask={lead.nextTask}
                 onViewDetails={() => {
                   setLocation(`/leads/${lead.id}`);
                 }}
