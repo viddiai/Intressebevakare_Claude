@@ -217,7 +217,12 @@ export default function LeadDetail() {
             {lead.source} • {lead.anlaggning || "Ingen anläggning"}
           </p>
         </div>
-        {getStatusBadge(lead.status)}
+        <Button
+          onClick={() => setLocation("/leads/create")}
+          data-testid="button-create-new-lead"
+        >
+          Skapa nytt lead
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
