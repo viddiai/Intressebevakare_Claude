@@ -16,15 +16,16 @@ export default function Overview() {
       </div>
 
       <div className={`grid grid-cols-1 gap-6 ${isManager ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-        <Link href="/leads/create">
-          <Card className="p-6 hover-elevate active-elevate-2 cursor-pointer bg-primary text-primary-foreground border-primary" data-testid="card-skapa-nytt-lead">
+        <Link href="/leads">
+          <Card className="p-6 hover-elevate active-elevate-2 cursor-pointer" data-testid="card-nya-leads-idag">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium">Skapa nytt lead</p>
-                <p className="text-base mt-2" data-testid="value-skapa-nytt-lead">Lägg till en ny intresseanmälan</p>
+                <p className="text-sm font-medium text-muted-foreground">Nya leads idag</p>
+                <p className="text-3xl font-bold text-foreground mt-2" data-testid="value-nya-leads-idag">8</p>
+                <p className="text-sm text-muted-foreground mt-1">+2 från igår</p>
               </div>
-              <div className="w-12 h-12 bg-primary-foreground/20 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-6 h-6" />
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-primary" />
               </div>
             </div>
           </Card>
