@@ -37,6 +37,16 @@ The frontend uses React with TypeScript, Vite, Wouter for routing, and TanStack 
 - Toast notifications for success/error feedback
 - Proper permission checks prevent unauthorized actions
 
+**Lead Reassignment Feature:**
+- Sellers can reassign pending acceptance leads to other sellers without first accepting them
+- "Tilldela till annan säljare" button appears on lead cards with pending acceptance status
+- Opens a dialog with seller selection dropdown populated from `/api/users/sellers` endpoint
+- Reassignment increments the seller's `leadsReassignedCount` statistic (tracked separately from declined leads)
+- Uses database transaction to ensure atomicity: lead reassignment, counter increment, and audit log creation
+- Reassigned leads are removed from the current seller's pending leads list
+- Audit log tracks the reassignment with both old and new seller information
+- Statistics displayed in Settings page under "Återlämnade leads" (Reassigned leads)
+
 **Seller Pool and Notification Integration:**
 - When a user disables email notifications (emailOnLeadAssignment = false), all their seller pools are automatically disabled
 - This ensures users who don't want email notifications also don't receive new leads via round-robin
@@ -108,6 +118,15 @@ The API includes public endpoints for contact forms and Bytbil webhooks, authent
 - GET `/api/leads/:id/email-decline` - Decline via email link (redirects after action)
 
 All acceptance endpoints enforce that only the assigned seller can accept/decline their leads.
+
+**Lead Reassignment Endpoints:**
+- GET `/api/users/sellers` - Get list of all sellers (accessible by any authenticated user)
+- POST `/api/leads/:id/reassign-to-seller` - Reassign a pending lead to another seller
+  - Request body: `{newSellerId: string}`
+  - Validates lead is assigned to current user and has pending acceptance status
+  - Uses database transaction for atomicity
+  - Increments `leadsReassignedCount` for current user
+  - Creates audit log entry tracking the reassignment
 
 #### Authentication and Authorization
 Replit OAuth (OIDC) is the primary authentication method, syncing user profiles and using session-based authentication with PostgreSQL persistence. Authorization is role-based (MANAGER, SALJARE), enforced by middleware on API routes and reflected in the frontend UI. Security measures include secure cookies, environment variable secrets, input validation with Zod, and Argon2 for password hashing.
