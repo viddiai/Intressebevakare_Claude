@@ -37,6 +37,13 @@ The frontend uses React with TypeScript, Vite, Wouter for routing, and TanStack 
 - Toast notifications for success/error feedback
 - Proper permission checks prevent unauthorized actions
 
+**Seller Pool and Notification Integration:**
+- When a user disables email notifications (emailOnLeadAssignment = false), all their seller pools are automatically disabled
+- This ensures users who don't want email notifications also don't receive new leads via round-robin
+- Backend updates all seller pools and logs status changes when notification preference is changed
+- Frontend displays informative message: "E-postnotifikationer avstängda. Din status i resurspoolerna har också inaktiverats"
+- Cache invalidation ensures UI reflects the changes immediately across Settings and Seller Pools pages
+
 #### Backend Architecture
 Built with Node.js and Express in TypeScript, the backend employs a modular route registration pattern and custom error handling. Authentication uses Replit OAuth with Passport.js and PostgreSQL for session storage, implementing role-based access control (Manager and Seller).
 
