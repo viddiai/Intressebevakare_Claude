@@ -44,6 +44,16 @@ The frontend uses React with TypeScript, Vite, Wouter for routing, and TanStack 
 - Frontend displays informative message: "E-postnotifikationer avstängda. Din status i resurspoolerna har också inaktiverats"
 - Cache invalidation ensures UI reflects the changes immediately across Settings and Seller Pools pages
 
+**Internal Messaging System:**
+- Comprehensive messaging system enabling sellers and managers to communicate about specific leads
+- Features: conversation list, chat windows, unread badges, real-time polling (5s for messages, 30s for unread counts)
+- Multiple entry points: direct messaging from lead detail views and quick message dialog from lead list cards
+- Mobile-responsive chat interface with sender names displayed above message bubbles
+- Message bubbles automatically sized for mobile (85% max-width) and larger screens (sm/md/lg breakpoints)
+- Blue message button (pratbubbla icon) in lead cards for quick contextual messaging
+- Sender names displayed left-aligned above each message bubble
+- All UI text in Swedish
+
 #### Backend Architecture
 Built with Node.js and Express in TypeScript, the backend employs a modular route registration pattern and custom error handling. Authentication uses Replit OAuth with Passport.js and PostgreSQL for session storage, implementing role-based access control (Manager and Seller).
 

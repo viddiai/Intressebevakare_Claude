@@ -180,17 +180,17 @@ export default function Messages() {
         {selectedUserId && selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b flex items-center gap-3">
+            <div className="p-3 sm:p-4 border-b flex items-center gap-2 sm:gap-3">
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden"
+                className="md:hidden flex-shrink-0"
                 onClick={() => setSelectedUserId(null)}
                 data-testid="button-back-to-conversations"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <Avatar>
+              <Avatar className="flex-shrink-0">
                 <AvatarImage
                   src={selectedConversation.otherUserProfileImageUrl || undefined}
                 />
@@ -198,35 +198,45 @@ export default function Messages() {
                   {getInitials(selectedConversation.otherUserName)}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <h2 className="font-semibold" data-testid="text-chat-user-name">
+              <div className="min-w-0 flex-1">
+                <h2 className="font-semibold truncate" data-testid="text-chat-user-name">
                   {selectedConversation.otherUserName}
                 </h2>
               </div>
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-3 sm:p-4">
               {messagesLoading ? (
                 <div className="text-center text-muted-foreground">
                   Laddar meddelanden...
                 </div>
               ) : messages.length === 0 ? (
-                <div className="text-center text-muted-foreground">
+                <div className="text-center text-muted-foreground px-4">
                   Inga meddelanden ännu. Skicka ett meddelande för att starta konversationen!
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {messages.map((message) => {
                     const isOwnMessage = message.senderId === user.id;
+                    const senderName = isOwnMessage
+                      ? `${user.firstName} ${user.lastName}`.trim()
+                      : selectedConversation?.otherUserName || "Okänd";
+                    
                     return (
                       <div
                         key={message.id}
-                        className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
+                        className={`flex flex-col ${isOwnMessage ? "items-end" : "items-start"}`}
                         data-testid={`message-${message.id}`}
                       >
+                        {/* Sender name */}
+                        <p className="text-xs text-muted-foreground mb-1 px-1">
+                          {senderName}
+                        </p>
+                        
+                        {/* Message bubble */}
                         <div
-                          className={`max-w-xs lg:max-w-md xl:max-w-lg ${
+                          className={`max-w-[85%] sm:max-w-xs md:max-w-sm lg:max-w-md ${
                             isOwnMessage
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted"
@@ -264,7 +274,7 @@ export default function Messages() {
             </ScrollArea>
 
             {/* Message Input */}
-            <div className="p-4 border-t">
+            <div className="p-3 sm:p-4 border-t">
               <div className="flex gap-2">
                 <Input
                   placeholder="Skriv ett meddelande..."
@@ -277,11 +287,13 @@ export default function Messages() {
                     }
                   }}
                   disabled={sendMessageMutation.isPending}
+                  className="text-base"
                   data-testid="input-message"
                 />
                 <Button
                   onClick={handleSendMessage}
                   disabled={!messageContent.trim() || sendMessageMutation.isPending}
+                  size="icon"
                   data-testid="button-send-message"
                 >
                   <Send className="h-4 w-4" />
