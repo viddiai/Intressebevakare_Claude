@@ -746,12 +746,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedLead = await storage.assignLead(req.params.id, validatedData.assignedToId);
       
       // Create audit log entry for reassignment
+      const fromUser = currentLead.assignedToId ? await storage.getUser(currentLead.assignedToId) : null;
+      const toUser = await storage.getUser(validatedData.assignedToId);
       await storage.createAuditLog({
         leadId: req.params.id,
         userId: userId,
-        action: "REASSIGNED",
-        fromValue: currentLead.assignedToId || null,
-        toValue: validatedData.assignedToId,
+        action: "Omtilldelad",
+        fromValue: fromUser ? `${fromUser.firstName} ${fromUser.lastName}` : "Ej tilldelad",
+        toValue: toUser ? `${toUser.firstName} ${toUser.lastName}` : validatedData.assignedToId,
       });
 
       await notificationService.notifyLeadAssignment(req.params.id, validatedData.assignedToId);

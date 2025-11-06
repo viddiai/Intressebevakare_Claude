@@ -280,12 +280,21 @@ export class DbStorage implements IStorage {
       .where(eq(leads.id, id))
       .returning();
 
+    const statusTranslations: Record<string, string> = {
+      "VANTAR_PA_ACCEPT": "Väntar på accept",
+      "NY_INTRESSEANMALAN": "Ny intresseanmälan",
+      "KUND_KONTAKTAD": "Kund kontaktad",
+      "OFFERT_SKICKAD": "Offert skickad",
+      "VUNNEN": "Vunnen",
+      "FORLORAD": "Förlorad"
+    };
+
     await this.createAuditLog({
       leadId: id,
       userId,
-      action: "STATUS_CHANGE",
-      fromValue: lead.status,
-      toValue: status,
+      action: "Status ändrad",
+      fromValue: statusTranslations[lead.status] || lead.status,
+      toValue: statusTranslations[status] || status,
     });
 
     return updatedLead;
@@ -341,9 +350,9 @@ export class DbStorage implements IStorage {
     await this.createAuditLog({
       leadId: id,
       userId,
-      action: "Lead accepted",
-      fromValue: "pending",
-      toValue: "accepted"
+      action: "Lead accepterad",
+      fromValue: null,
+      toValue: null
     });
 
     return lead;
@@ -375,9 +384,9 @@ export class DbStorage implements IStorage {
     await this.createAuditLog({
       leadId: id,
       userId,
-      action: "Lead declined",
-      fromValue: "pending",
-      toValue: "declined"
+      action: "Lead nekad",
+      fromValue: null,
+      toValue: null
     });
 
     return lead;

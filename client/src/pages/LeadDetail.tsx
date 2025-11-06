@@ -775,14 +775,14 @@ export default function LeadDetail() {
               activity.map((log) => (
                 <div key={log.id} className="flex gap-3 p-3 bg-muted rounded-md" data-testid={`activity-${log.id}`}>
                   <div className="flex-1">
-                    <p className="text-sm" data-testid={`text-activity-action-${log.id}`}>{log.action}</p>
+                    <p className="text-sm font-medium" data-testid={`text-activity-action-${log.id}`}>{log.action}</p>
                     {log.fromValue && log.toValue && (
-                      <p className="text-xs text-muted-foreground" data-testid={`text-activity-change-${log.id}`}>
+                      <p className="text-xs text-muted-foreground mt-1" data-testid={`text-activity-change-${log.id}`}>
                         {log.fromValue} → {log.toValue}
                       </p>
                     )}
-                    <p className="text-xs text-muted-foreground" data-testid={`text-activity-date-${log.id}`}>
-                      {formatInTimeZone(new Date(log.createdAt), SWEDISH_TZ, "PPp", { locale: sv })}
+                    <p className="text-xs text-muted-foreground mt-1" data-testid={`text-activity-date-${log.id}`}>
+                      {formatInTimeZone(new Date(log.createdAt), SWEDISH_TZ, "d MMM yyyy HH:mm", { locale: sv })}
                     </p>
                   </div>
                 </div>

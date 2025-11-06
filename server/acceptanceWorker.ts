@@ -47,12 +47,13 @@ export class AcceptanceWorker {
             if (newAssigneeId) {
               console.log(`[AcceptanceWorker] Lead ${lead.id} reassigned to ${newAssigneeId}`);
               
+              const newAssignee = await storage.getUser(newAssigneeId);
               await storage.createAuditLog({
                 leadId: lead.id,
                 userId: assignedUser.id,
-                action: "Lead auto-declined due to timeout",
-                fromValue: lead.assignedToId || "",
-                toValue: newAssigneeId
+                action: "Lead nekad (tidsgräns)",
+                fromValue: `${assignedUser.firstName} ${assignedUser.lastName}`,
+                toValue: newAssignee ? `${newAssignee.firstName} ${newAssignee.lastName}` : newAssigneeId
               });
             } else {
               console.log(`[AcceptanceWorker] Could not reassign lead ${lead.id}, no other sellers available`);
@@ -61,7 +62,6 @@ export class AcceptanceWorker {
                 status: "NY_INTRESSEANMALAN",
                 assignedToId: null,
                 acceptStatus: null,
-                assignedAt: null,
                 reminderSentAt6h: null,
                 reminderSentAt11h: null,
                 timeoutNotifiedAt: now
