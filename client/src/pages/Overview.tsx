@@ -157,7 +157,7 @@ export default function Overview() {
           <Button variant="outline" className="justify-between h-auto py-4" asChild>
             <Link href="/leads">
               <div className="text-left">
-                <p className="font-medium">Mina Leads</p>
+                <p className="font-medium">Leadslista</p>
                 <p className="text-sm text-muted-foreground">Se alla tilldelade leads</p>
               </div>
               <ArrowRight className="w-5 h-5" />

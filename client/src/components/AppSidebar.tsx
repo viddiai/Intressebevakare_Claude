@@ -24,7 +24,7 @@ const menuItems = [
     roles: ["MANAGER", "SALJARE"],
   },
   {
-    title: "Mina Leads",
+    title: "Leadslista",
     url: "/leads",
     icon: ListFilter,
     roles: ["MANAGER", "SALJARE"],
