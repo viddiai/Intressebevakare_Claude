@@ -1195,6 +1195,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/my-seller-pools', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Användare hittades inte" });
+      }
+
+      const userPools = await storage.getSellerPoolsByUserId(userId);
+      res.json(userPools);
+    } catch (error) {
+      console.error("Error fetching own seller pools:", error);
+      res.status(500).json({ message: "Misslyckades att hämta resurspooler" });
+    }
+  });
+
+  app.post('/api/my-facilities', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Användare hittades inte" });
+      }
+
+      const facilitiesSchema = z.object({
+        anlaggningar: z.array(z.enum(["Falkenberg", "Göteborg", "Trollhättan"])),
+      });
+
+      const validatedData = facilitiesSchema.parse(req.body);
+      
+      await storage.syncUserFacilities(userId, validatedData.anlaggningar);
+      
+      const updatedPools = await storage.getSellerPoolsByUserId(userId);
+      res.json(updatedPools);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Valideringsfel", errors: error.errors });
+      }
+      console.error("Error syncing user facilities:", error);
+      res.status(500).json({ message: "Misslyckades att uppdatera anläggningar" });
+    }
+  });
+
   app.patch('/api/my-seller-pools/:id/status', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;

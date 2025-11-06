@@ -16,9 +16,11 @@ import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { SellerPool, StatusChangeHistoryWithUser } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";
+import { Building2 } from "lucide-react";
 
 // Separate component for seller pool status to comply with hooks rules
 function SellerPoolStatus({ pool, userId }: { pool: SellerPool; userId: string }) {
@@ -36,7 +38,7 @@ function SellerPoolStatus({ pool, userId }: { pool: SellerPool; userId: string }
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/seller-pools"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-seller-pools"] });
       queryClient.invalidateQueries({ queryKey: ["/api/seller-pools", pool.id, "status-history"] });
       toast({
         title: "Status uppdaterad",
@@ -143,12 +145,20 @@ export default function Settings() {
   const [anlaggning, setAnlaggning] = useState(user?.anlaggning || "");
 
   // Fetch user's seller pools (available to all users)
-  const { data: allSellerPools = [] } = useQuery<SellerPool[]>({
-    queryKey: ["/api/seller-pools"],
+  const { data: userPools = [] } = useQuery<SellerPool[]>({
+    queryKey: ["/api/my-seller-pools"],
   });
 
-  // Filter pools for current user
-  const userPools = allSellerPools.filter(pool => pool.userId === user?.id);
+  // State for managing user's facilities
+  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
+
+  // Update selected facilities when pools are loaded
+  useEffect(() => {
+    if (userPools.length > 0) {
+      const facilities = userPools.map(pool => pool.anlaggning as string);
+      setSelectedFacilities(facilities);
+    }
+  }, [userPools]);
 
   const profileForm = useForm({
     resolver: zodResolver(profileSchema),
@@ -256,11 +266,45 @@ export default function Settings() {
     },
   });
 
+  const updateFacilitiesMutation = useMutation({
+    mutationFn: async (anlaggningar: string[]) => {
+      return apiRequest("POST", `/api/my-facilities`, { anlaggningar });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/my-seller-pools"] });
+      toast({
+        title: "Anläggningar uppdaterade",
+        description: "Dina anläggningar har sparats.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Fel",
+        description: "Kunde inte uppdatera anläggningar. Försök igen.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSave = () => {
     updateProfileMutation.mutate({
       role,
       anlaggning: anlaggning || null,
     });
+  };
+
+  const handleFacilityToggle = (facility: string) => {
+    setSelectedFacilities(prev => {
+      if (prev.includes(facility)) {
+        return prev.filter(f => f !== facility);
+      } else {
+        return [...prev, facility];
+      }
+    });
+  };
+
+  const handleSaveFacilities = () => {
+    updateFacilitiesMutation.mutate(selectedFacilities);
   };
 
   const onProfileSubmit = (data: z.infer<typeof profileSchema>) => {
@@ -449,6 +493,54 @@ export default function Settings() {
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             )}
             Spara ändringar
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5" />
+            Mina anläggningar
+          </CardTitle>
+          <CardDescription>Välj vilka anläggningar du vill vara aktiv på</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            {["Falkenberg", "Göteborg", "Trollhättan"].map((facility) => (
+              <div key={facility} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`facility-${facility}`}
+                  checked={selectedFacilities.includes(facility)}
+                  onCheckedChange={() => handleFacilityToggle(facility)}
+                  data-testid={`checkbox-facility-${facility}`}
+                />
+                <Label
+                  htmlFor={`facility-${facility}`}
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  {facility}
+                </Label>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-start gap-2 text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/30 p-3 rounded-md">
+            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <p>
+              Du kan lägga till dig själv på fler anläggningar genom att markera dem ovan. Du kommer att ingå i round-robin fördelningen för alla valda anläggningar.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleSaveFacilities}
+            disabled={updateFacilitiesMutation.isPending || selectedFacilities.length === 0}
+            data-testid="button-save-facilities"
+          >
+            {updateFacilitiesMutation.isPending && (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            )}
+            Spara anläggningar
           </Button>
         </CardContent>
       </Card>
