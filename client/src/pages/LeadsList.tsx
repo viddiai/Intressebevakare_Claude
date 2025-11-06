@@ -43,7 +43,7 @@ export default function LeadsList() {
   });
 
   const { data: users } = useQuery<User[]>({
-    queryKey: ["/api/users"],
+    queryKey: ["/api/users/sellers"],
   });
 
   const assignLeadMutation = useMutation({

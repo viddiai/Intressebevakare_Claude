@@ -442,6 +442,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/users/sellers', isAuthenticated, async (req: any, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const sellers = users.filter(u => u.role === "SALJARE");
+      res.json(sellers);
+    } catch (error) {
+      console.error("Error fetching sellers:", error);
+      res.status(500).json({ message: "Failed to fetch sellers" });
+    }
+  });
+
   app.patch('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
