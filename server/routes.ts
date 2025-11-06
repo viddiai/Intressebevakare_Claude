@@ -859,6 +859,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/leads/:id/reassign-to-seller', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const lead = await storage.getLead(req.params.id);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+
+      if (lead.assignedToId !== userId) {
+        return res.status(403).json({ message: "You can only reassign leads assigned to you" });
+      }
+
+      if (lead.status !== "VANTAR_PA_ACCEPT") {
+        return res.status(400).json({ message: "This lead is not pending acceptance" });
+      }
+
+      const reassignSchema = z.object({
+        newSellerId: z.string().min(1, "New seller ID is required"),
+      });
+
+      const validatedData = reassignSchema.parse(req.body);
+
+      const newSeller = await storage.getUser(validatedData.newSellerId);
+      if (!newSeller) {
+        return res.status(404).json({ message: "New seller not found" });
+      }
+
+      if (!newSeller.isActive) {
+        return res.status(400).json({ message: "New seller is not active" });
+      }
+
+      if (newSeller.role !== "SALJARE") {
+        return res.status(400).json({ message: "Can only reassign to salespeople" });
+      }
+
+      const updatedLead = await storage.reassignLeadToSeller(req.params.id, validatedData.newSellerId, userId);
+
+      await notificationService.notifyLeadAssignment(req.params.id, validatedData.newSellerId);
+
+      res.json({ message: "Lead reassigned successfully", lead: updatedLead });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error reassigning lead:", error);
+      res.status(500).json({ message: "Failed to reassign lead" });
+    }
+  });
+
   app.get('/api/leads/:id/email-accept', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;

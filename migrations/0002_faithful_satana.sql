@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "leads_reassigned_count" integer DEFAULT 0 NOT NULL;

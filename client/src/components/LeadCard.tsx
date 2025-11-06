@@ -33,6 +33,7 @@ interface LeadCardProps {
   onAssign?: () => void;
   onAccept?: () => void;
   onDecline?: () => void;
+  onReassign?: () => void;
   onSendMessage?: () => void;
 }
 
@@ -57,6 +58,7 @@ export default function LeadCard({
   onAssign,
   onAccept,
   onDecline,
+  onReassign,
   onSendMessage
 }: LeadCardProps) {
   const isPendingAcceptance = status === "VANTAR_PA_ACCEPT" && (acceptStatus === "pending" || !acceptStatus);
@@ -243,6 +245,16 @@ export default function LeadCard({
               >
                 Avvisa
               </Button>
+              {onReassign && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={onReassign}
+                  data-testid={`button-reassign-lead-${id}`}
+                >
+                  Tilldela till annan säljare
+                </Button>
+              )}
             </>
           )}
           <Button 

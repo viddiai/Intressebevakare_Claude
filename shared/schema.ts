@@ -42,6 +42,7 @@ export const users = pgTable("users", {
   leadsAcceptedCount: integer("leads_accepted_count").notNull().default(0),
   leadsDeclinedCount: integer("leads_declined_count").notNull().default(0),
   leadsTimedOutCount: integer("leads_timed_out_count").notNull().default(0),
+  leadsReassignedCount: integer("leads_reassigned_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

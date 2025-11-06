@@ -15,6 +15,13 @@
       "when": 1762414890915,
       "tag": "0001_hot_firebrand",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1762443981557,
+      "tag": "0002_faithful_satana",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import StatusTabs from "@/components/StatusTabs";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -27,6 +28,9 @@ export default function LeadsList() {
   const [messageContent, setMessageContent] = useState("");
   const [messageRecipientId, setMessageRecipientId] = useState<string | null>(null);
   const [messageLeadId, setMessageLeadId] = useState<string | null>(null);
+  const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
+  const [reassignLeadId, setReassignLeadId] = useState<string | null>(null);
+  const [selectedSellerId, setSelectedSellerId] = useState<string>("");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -102,6 +106,29 @@ export default function LeadsList() {
     },
   });
 
+  const reassignLeadMutation = useMutation({
+    mutationFn: async ({ leadId, newSellerId }: { leadId: string; newSellerId: string }) => {
+      return await apiRequest("POST", `/api/leads/${leadId}/reassign-to-seller`, { newSellerId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      setReassignDialogOpen(false);
+      setReassignLeadId(null);
+      setSelectedSellerId("");
+      toast({
+        title: "Lead omtilldelat",
+        description: "Leadet har tilldelats den valda säljaren",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Fel",
+        description: "Kunde inte omtilldela lead",
+        variant: "destructive",
+      });
+    },
+  });
+
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { receiverId: string; content: string; leadId?: string }) => {
       return await apiRequest("POST", "/api/messages", data);
@@ -139,6 +166,24 @@ export default function LeadsList() {
       leadId: messageLeadId || undefined,
     });
   };
+
+  const handleReassign = () => {
+    if (!reassignLeadId || !selectedSellerId) return;
+
+    reassignLeadMutation.mutate({
+      leadId: reassignLeadId,
+      newSellerId: selectedSellerId,
+    });
+  };
+
+  const activeSellers = useMemo(() => {
+    if (!users || !currentUser) return [];
+    return users.filter((user) => 
+      user.role === "SALJARE" && 
+      user.isActive && 
+      user.id !== currentUser.id
+    );
+  }, [users, currentUser]);
 
   const filteredLeads = useMemo(() => {
     if (!leads) return [];
@@ -285,6 +330,10 @@ export default function LeadsList() {
                 onDecline={isAssignedToMe ? () => {
                   declineLeadMutation.mutate(lead.id);
                 } : undefined}
+                onReassign={isAssignedToMe ? () => {
+                  setReassignLeadId(lead.id);
+                  setReassignDialogOpen(true);
+                } : undefined}
                 onSendMessage={lead.assignedToId ? () => {
                   setMessageRecipientId(lead.assignedToId!);
                   setMessageLeadId(lead.id);
@@ -297,6 +346,61 @@ export default function LeadsList() {
           })
         )}
       </div>
+
+      {/* Reassign Dialog */}
+      <Dialog open={reassignDialogOpen} onOpenChange={setReassignDialogOpen}>
+        <DialogContent data-testid="dialog-reassign-lead">
+          <DialogHeader>
+            <DialogTitle>Tilldela till annan säljare</DialogTitle>
+            <DialogDescription>
+              Välj en säljare att tilldela detta lead till. Leadet kommer att markeras som "avvisat" i din statistik.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium mb-2">Välj säljare:</p>
+              <Select value={selectedSellerId} onValueChange={setSelectedSellerId}>
+                <SelectTrigger data-testid="select-seller-reassign">
+                  <SelectValue placeholder="Välj en säljare" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeSellers.map((seller) => (
+                    <SelectItem key={seller.id} value={seller.id}>
+                      {seller.firstName && seller.lastName
+                        ? `${seller.firstName} ${seller.lastName}`
+                        : seller.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setReassignDialogOpen(false);
+                setReassignLeadId(null);
+                setSelectedSellerId("");
+              }}
+              data-testid="button-cancel-reassign"
+            >
+              Avbryt
+            </Button>
+            <Button
+              onClick={handleReassign}
+              disabled={!selectedSellerId || reassignLeadMutation.isPending}
+              data-testid="button-confirm-reassign"
+            >
+              {reassignLeadMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Tilldela"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Message Dialog */}
       <Dialog open={messageDialogOpen} onOpenChange={setMessageDialogOpen}>

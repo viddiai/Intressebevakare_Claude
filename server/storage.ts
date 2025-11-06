@@ -51,6 +51,7 @@ export interface IStorage {
   deleteLead(id: string): Promise<void>;
   acceptLead(id: string, userId: string): Promise<Lead>;
   declineLead(id: string, userId: string, reason?: string): Promise<Lead>;
+  reassignLeadToSeller(id: string, newSellerId: string, currentUserId: string): Promise<Lead>;
   getLeadsPendingAcceptance(assignedToId?: string): Promise<LeadWithAssignedTo[]>;
   getManagerForFacility(anlaggning: string): Promise<User | undefined>;
   
@@ -397,6 +398,55 @@ export class DbStorage implements IStorage {
     });
 
     return lead;
+  }
+
+  async reassignLeadToSeller(id: string, newSellerId: string, currentUserId: string): Promise<Lead> {
+    return await db.transaction(async (tx) => {
+      const [lead] = await tx
+        .update(leads)
+        .set({
+          assignedToId: newSellerId,
+          assignedAt: new Date(),
+          acceptStatus: "pending",
+          acceptedAt: null,
+          declinedAt: null,
+          declineReason: null,
+          reminderSentAt6h: null,
+          reminderSentAt11h: null,
+          timeoutNotifiedAt: null
+        })
+        .where(eq(leads.id, id))
+        .returning();
+
+      if (!lead) {
+        throw new Error("Lead not found");
+      }
+
+      await tx
+        .update(users)
+        .set({ leadsReassignedCount: sql`${users.leadsReassignedCount} + 1` })
+        .where(eq(users.id, currentUserId));
+
+      const [newSeller] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.id, newSellerId))
+        .limit(1);
+      
+      const newSellerName = newSeller 
+        ? `${newSeller.firstName || ''} ${newSeller.lastName || ''}`.trim() || newSeller.email
+        : 'Unknown';
+
+      await tx.insert(auditLogs).values({
+        leadId: id,
+        userId: currentUserId,
+        action: "Lead reassigned",
+        fromValue: currentUserId,
+        toValue: `${newSellerId} (${newSellerName})`
+      });
+
+      return lead;
+    });
   }
 
   async getLeadsPendingAcceptance(assignedToId?: string): Promise<LeadWithAssignedTo[]> {

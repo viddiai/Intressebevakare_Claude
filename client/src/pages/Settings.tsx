@@ -9,7 +9,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState, useEffect } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Loader2, Upload, Lock, Power, AlertCircle, Clock, Mail } from "lucide-react";
+import { Loader2, Upload, Lock, Power, AlertCircle, Clock, Mail, CheckCircle, XCircle, UserX, TimerOff, BarChart3 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -357,6 +357,71 @@ export default function Settings() {
         <h1 className="text-3xl font-bold text-foreground">Inställningar</h1>
         <p className="text-muted-foreground mt-1">Hantera dina kontoinställningar</p>
       </div>
+
+      {user.role === "SALJARE" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5" />
+              Min statistik
+            </CardTitle>
+            <CardDescription>Översikt över dina lead-åtgärder</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-green-50 dark:bg-green-950/30 p-4 rounded-lg border border-green-200 dark:border-green-900">
+                <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
+                  <CheckCircle className="w-4 h-4" />
+                  <p className="text-sm font-medium">Accepterade</p>
+                </div>
+                <p className="text-2xl font-bold text-green-900 dark:text-green-100" data-testid="stat-accepted">
+                  {user.leadsAcceptedCount || 0}
+                </p>
+              </div>
+
+              <div className="bg-red-50 dark:bg-red-950/30 p-4 rounded-lg border border-red-200 dark:border-red-900">
+                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 mb-2">
+                  <XCircle className="w-4 h-4" />
+                  <p className="text-sm font-medium">Avvisade</p>
+                </div>
+                <p className="text-2xl font-bold text-red-900 dark:text-red-100" data-testid="stat-declined">
+                  {user.leadsDeclinedCount || 0}
+                </p>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-900">
+                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 mb-2">
+                  <UserX className="w-4 h-4" />
+                  <p className="text-sm font-medium">Omtilldelade</p>
+                </div>
+                <p className="text-2xl font-bold text-blue-900 dark:text-blue-100" data-testid="stat-reassigned">
+                  {user.leadsReassignedCount || 0}
+                </p>
+              </div>
+
+              <div className="bg-yellow-50 dark:bg-yellow-950/30 p-4 rounded-lg border border-yellow-200 dark:border-yellow-900">
+                <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 mb-2">
+                  <TimerOff className="w-4 h-4" />
+                  <p className="text-sm font-medium">Utlöpta</p>
+                </div>
+                <p className="text-2xl font-bold text-yellow-900 dark:text-yellow-100" data-testid="stat-timed-out">
+                  {user.leadsTimedOutCount || 0}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/30 p-3 rounded-md mt-4">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <p>
+                <strong>Accepterade:</strong> Leads du har accepterat. 
+                <strong className="ml-2">Avvisade:</strong> Leads du har avvisat (omtilldelades automatiskt). 
+                <strong className="ml-2">Omtilldelade:</strong> Leads du har tilldelat till andra säljare. 
+                <strong className="ml-2">Utlöpta:</strong> Leads som gick ut på tid innan du accepterade.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
