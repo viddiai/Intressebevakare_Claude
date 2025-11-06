@@ -22,6 +22,19 @@ import AcceptanceBanner from "@/components/AcceptanceBanner";
 
 const SWEDISH_TZ = "Europe/Stockholm";
 
+const activityTranslations: Record<string, string> = {
+  "REASSIGNED": "Omtilldelad",
+  "STATUS_CHANGE": "Status ändrad",
+  "Lead accepted": "Lead accepterad",
+  "Lead declined": "Lead nekad",
+  "Lead auto-declined due to timeout": "Lead nekad (tidsgräns)",
+  "Omtilldelad": "Omtilldelad",
+  "Status ändrad": "Status ändrad",
+  "Lead accepterad": "Lead accepterad",
+  "Lead nekad": "Lead nekad",
+  "Lead nekad (tidsgräns)": "Lead nekad (tidsgräns)",
+};
+
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
@@ -775,7 +788,9 @@ export default function LeadDetail() {
               activity.map((log) => (
                 <div key={log.id} className="flex gap-3 p-3 bg-muted rounded-md" data-testid={`activity-${log.id}`}>
                   <div className="flex-1">
-                    <p className="text-sm font-medium" data-testid={`text-activity-action-${log.id}`}>{log.action}</p>
+                    <p className="text-sm font-medium" data-testid={`text-activity-action-${log.id}`}>
+                      {activityTranslations[log.action] || log.action}
+                    </p>
                     {log.fromValue && log.toValue && (
                       <p className="text-xs text-muted-foreground mt-1" data-testid={`text-activity-change-${log.id}`}>
                         {log.fromValue} → {log.toValue}

@@ -51,7 +51,7 @@ export class AcceptanceWorker {
               await storage.createAuditLog({
                 leadId: lead.id,
                 userId: assignedUser.id,
-                action: "Lead nekad (tidsgräns)",
+                action: "Lead auto-declined due to timeout",
                 fromValue: `${assignedUser.firstName} ${assignedUser.lastName}`,
                 toValue: newAssignee ? `${newAssignee.firstName} ${newAssignee.lastName}` : newAssigneeId
               });

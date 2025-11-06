@@ -751,7 +751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createAuditLog({
         leadId: req.params.id,
         userId: userId,
-        action: "Omtilldelad",
+        action: "REASSIGNED",
         fromValue: fromUser ? `${fromUser.firstName} ${fromUser.lastName}` : "Ej tilldelad",
         toValue: toUser ? `${toUser.firstName} ${toUser.lastName}` : validatedData.assignedToId,
       });
