@@ -73,7 +73,7 @@ Built with Node.js and Express in TypeScript, the backend employs a modular rout
     -   **Bytbil Webhook:** Real-time lead delivery from Bytbil via a POST endpoint with optional secret validation and Zod schema validation.
 -   **Round-Robin Assignment:** Distributes leads to sales reps based on facility-specific seller pools, with configurable seller activation/deactivation.
 -   **Lead Lifecycle Management:** Tracks lead status transitions (NY_INTRESSEANMALAN to KUND_KONTAKTAD to VUNNEN/FORLORAD), timestamps key events, and logs all changes.
--   **Lead Acceptance System:** 12-hour acceptance window with email reminders at 6h and 11h, database flag-based tracking (reminderSentAt6h, reminderSentAt11h, timeoutNotifiedAt), automatic reassignment on decline/timeout, and statistics tracking (leadsAcceptedCount, leadsDeclinedCount, leadsTimedOutCount).
+-   **Lead Acceptance System:** 12-hour acceptance window with email reminders at 6h and 11h, database flag-based tracking (reminderSentAt6h, reminderSentAt11h, timeoutNotifiedAt), automatic reassignment on decline/timeout, and statistics tracking (leadsAcceptedCount, leadsDeclinedCount, leadsTimedOutCount). Respects user email notification preferences: users with emailOnLeadAssignment=false do not receive 6h/11h reminder emails, but the 12h timeout logic still executes (lead reassignment, manager notification, timeout counter increment).
 -   **Password Reset:** Secure token-based password reset via email using the Resend API.
 -   **Public Contact Form:** Unauthenticated endpoint for website visitors to submit inquiries, creating leads with automatic round-robin assignment.
 
