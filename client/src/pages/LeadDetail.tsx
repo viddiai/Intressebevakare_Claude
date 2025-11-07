@@ -8,12 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Mail, Phone, ExternalLink, Loader2, Plus, CheckCircle2, Circle, UserCog, Edit2, X, Check, MessageCircle } from "lucide-react";
+import { ArrowLeft, Mail, Phone, ExternalLink, Loader2, Plus, CheckCircle2, Circle, UserCog, Edit2, X, Check, MessageCircle, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 import type { Lead, LeadNote, LeadTask, AuditLog, User } from "@shared/schema";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
@@ -56,6 +59,7 @@ export default function LeadDetail() {
   const [messageDialogOpen, setMessageDialogOpen] = useState(false);
   const [messageContent, setMessageContent] = useState("");
   const [messageRecipientId, setMessageRecipientId] = useState("");
+  const [recipientComboboxOpen, setRecipientComboboxOpen] = useState(false);
 
   const { data: lead, isLoading: leadLoading } = useQuery<Lead>({
     queryKey: [`/api/leads/${id}`],
@@ -78,7 +82,6 @@ export default function LeadDetail() {
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
-    enabled: currentUser?.role === "MANAGER",
   });
 
   const updateStatusMutation = useMutation({
@@ -876,11 +879,66 @@ export default function LeadDetail() {
           <div className="space-y-4">
             <div>
               <p className="text-sm font-medium mb-2">Mottagare:</p>
-              <p className="text-sm text-muted-foreground">
-                {users.find((u) => u.id === messageRecipientId)
-                  ? `${users.find((u) => u.id === messageRecipientId)?.firstName} ${users.find((u) => u.id === messageRecipientId)?.lastName}`
-                  : "Välj mottagare"}
-              </p>
+              <Popover open={recipientComboboxOpen} onOpenChange={setRecipientComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={recipientComboboxOpen}
+                    className="w-full justify-between"
+                    data-testid="select-message-recipient"
+                  >
+                    {messageRecipientId
+                      ? (() => {
+                          const user = users.find((u) => u.id === messageRecipientId);
+                          if (user) {
+                            return user.firstName && user.lastName
+                              ? `${user.firstName} ${user.lastName}`
+                              : user.email;
+                          }
+                          return "Välj mottagare";
+                        })()
+                      : "Välj mottagare"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Sök användare..." data-testid="input-search-recipient" />
+                    <CommandList>
+                      <CommandEmpty>Ingen användare hittades.</CommandEmpty>
+                      {users.map((user) => (
+                        <CommandItem
+                          key={user.id}
+                          value={`${user.firstName} ${user.lastName} ${user.email} ${user.anlaggning}`}
+                          onSelect={() => {
+                            setMessageRecipientId(user.id);
+                            setRecipientComboboxOpen(false);
+                          }}
+                          data-testid={`recipient-option-${user.id}`}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              messageRecipientId === user.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">
+                              {user.firstName && user.lastName
+                                ? `${user.firstName} ${user.lastName}`
+                                : user.email}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {user.role === "MANAGER" ? "Manager" : "Säljare"} • {user.anlaggning || "Ingen anläggning"}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <p className="text-sm font-medium mb-2">Meddelande:</p>
