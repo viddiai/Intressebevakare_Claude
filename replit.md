@@ -62,6 +62,7 @@ The frontend uses React with TypeScript, Vite, Wouter for routing, and TanStack 
 - Message bubbles automatically sized for mobile (85% max-width) and larger screens (sm/md/lg breakpoints)
 - Blue message button (pratbubbla icon) in lead cards for quick contextual messaging
 - Sender names displayed left-aligned above each message bubble
+- **Clickable lead references:** Messages associated with leads display the lead title as a clickable link that navigates directly to the lead detail page, with appropriate styling for both own and received messages
 - All UI text in Swedish
 
 #### Backend Architecture
@@ -130,6 +131,13 @@ All acceptance endpoints enforce that only the assigned seller can accept/declin
 
 #### Authentication and Authorization
 Replit OAuth (OIDC) is the primary authentication method, syncing user profiles and using session-based authentication with PostgreSQL persistence. Authorization is role-based (MANAGER, SALJARE), enforced by middleware on API routes and reflected in the frontend UI. Security measures include secure cookies, environment variable secrets, input validation with Zod, and Argon2 for password hashing.
+
+**Lead Detail Access Rules:**
+- Users can access lead details (GET `/api/leads/:id`) if any of the following conditions are met:
+  1. User is a manager (role === "MANAGER")
+  2. User is assigned to the lead (lead.assignedToId === userId)
+  3. User has messages (sent or received) about the lead
+- This ensures that users who participate in conversations about a lead can view the lead details via clickable references in messages
 
 ### External Dependencies
 
