@@ -114,6 +114,7 @@ export interface IStorage {
   getMessages(userId: string, otherUserId: string): Promise<MessageWithUsers[]>;
   markMessagesAsRead(userId: string, otherUserId: string): Promise<void>;
   getUnreadMessageCount(userId: string): Promise<number>;
+  hasMessagesForLead(userId: string, leadId: string): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -949,6 +950,20 @@ export class DbStorage implements IStorage {
       );
 
     return result[0]?.count || 0;
+  }
+
+  async hasMessagesForLead(userId: string, leadId: string): Promise<boolean> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.leadId, leadId),
+          sql`(${messages.senderId} = ${userId} OR ${messages.receiverId} = ${userId})`
+        )
+      );
+
+    return (result[0]?.count || 0) > 0;
   }
 
   async getOverviewStats(userId?: string, userRole?: string) {

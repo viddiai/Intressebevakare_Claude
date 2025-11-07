@@ -636,7 +636,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Lead not found" });
       }
 
-      if (user.role !== "MANAGER" && lead.assignedToId !== userId) {
+      const hasMessages = await storage.hasMessagesForLead(userId, lead.id);
+      if (user.role !== "MANAGER" && lead.assignedToId !== userId && !hasMessages) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
