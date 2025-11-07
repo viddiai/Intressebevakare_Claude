@@ -83,29 +83,43 @@ export class AcceptanceWorker {
           }
         }
         else if (hoursSinceAssignment >= 11 && !lead.reminderSentAt11h) {
-          console.log(`[AcceptanceWorker] Lead ${lead.id} is at 11 hours, sending final reminder`);
-          
-          try {
-            await sendAcceptanceReminderEmail(assignedUser, lead, 1);
+          if (!assignedUser.emailOnLeadAssignment) {
+            console.log(`[AcceptanceWorker] User ${assignedUser.email} has email notifications disabled, skipping 11h reminder for lead ${lead.id}`);
             await storage.updateLead(lead.id, {
               reminderSentAt11h: now
             });
-            console.log(`[AcceptanceWorker] Final reminder sent for lead ${lead.id}`);
-          } catch (error) {
-            console.error(`[AcceptanceWorker] Failed to send final reminder for lead ${lead.id}:`, error);
+          } else {
+            console.log(`[AcceptanceWorker] Lead ${lead.id} is at 11 hours, sending final reminder`);
+            
+            try {
+              await sendAcceptanceReminderEmail(assignedUser, lead, 1);
+              await storage.updateLead(lead.id, {
+                reminderSentAt11h: now
+              });
+              console.log(`[AcceptanceWorker] Final reminder sent for lead ${lead.id}`);
+            } catch (error) {
+              console.error(`[AcceptanceWorker] Failed to send final reminder for lead ${lead.id}:`, error);
+            }
           }
         }
         else if (hoursSinceAssignment >= 6 && !lead.reminderSentAt6h) {
-          console.log(`[AcceptanceWorker] Lead ${lead.id} is at 6 hours, sending first reminder`);
-          
-          try {
-            await sendAcceptanceReminderEmail(assignedUser, lead, 6);
+          if (!assignedUser.emailOnLeadAssignment) {
+            console.log(`[AcceptanceWorker] User ${assignedUser.email} has email notifications disabled, skipping 6h reminder for lead ${lead.id}`);
             await storage.updateLead(lead.id, {
               reminderSentAt6h: now
             });
-            console.log(`[AcceptanceWorker] First reminder sent for lead ${lead.id}`);
-          } catch (error) {
-            console.error(`[AcceptanceWorker] Failed to send first reminder for lead ${lead.id}:`, error);
+          } else {
+            console.log(`[AcceptanceWorker] Lead ${lead.id} is at 6 hours, sending first reminder`);
+            
+            try {
+              await sendAcceptanceReminderEmail(assignedUser, lead, 6);
+              await storage.updateLead(lead.id, {
+                reminderSentAt6h: now
+              });
+              console.log(`[AcceptanceWorker] First reminder sent for lead ${lead.id}`);
+            } catch (error) {
+              console.error(`[AcceptanceWorker] Failed to send first reminder for lead ${lead.id}:`, error);
+            }
           }
         }
       }

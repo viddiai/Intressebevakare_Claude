@@ -307,7 +307,7 @@ export async function sendAcceptanceReminderEmail(user: User, lead: Lead, hoursR
                   Hej ${firstName},
                 </p>
                 <p style="margin: 0 0 20px 0; color: #333; font-size: 16px; line-height: 1.5;">
-                  Du har ${hoursRemaining} timme${hoursRemaining !== 1 ? 'r' : ''} kvar att bekräfta följande lead:
+                  Du har ${hoursRemaining} ${hoursRemaining === 1 ? 'timme' : 'timmar'} kvar att bekräfta följande lead:
                 </p>
                 
                 <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
