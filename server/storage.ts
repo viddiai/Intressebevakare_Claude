@@ -112,6 +112,7 @@ export interface IStorage {
     unreadCount: number;
   }>>;
   getMessages(userId: string, otherUserId: string): Promise<MessageWithUsers[]>;
+  getLeadMessages(leadId: string): Promise<MessageWithUsers[]>;
   markMessagesAsRead(userId: string, otherUserId: string): Promise<void>;
   getUnreadMessageCount(userId: string): Promise<number>;
   hasMessagesForLead(userId: string, leadId: string): Promise<boolean>;
@@ -964,6 +965,66 @@ export class DbStorage implements IStorage {
       );
 
     return (result[0]?.count || 0) > 0;
+  }
+
+  async getLeadMessages(leadId: string): Promise<MessageWithUsers[]> {
+    const messageList = await db
+      .select({
+        id: messages.id,
+        senderId: messages.senderId,
+        receiverId: messages.receiverId,
+        content: messages.content,
+        leadId: messages.leadId,
+        isRead: messages.isRead,
+        createdAt: messages.createdAt,
+        senderFirstName: users.firstName,
+        senderLastName: users.lastName,
+        senderProfileImageUrl: users.profileImageUrl,
+      })
+      .from(messages)
+      .leftJoin(users, eq(messages.senderId, users.id))
+      .where(eq(messages.leadId, leadId))
+      .orderBy(desc(messages.createdAt));
+
+    if (messageList.length === 0) {
+      return [];
+    }
+
+    const lead = await this.getLead(leadId);
+    const leadTitle = lead?.vehicleTitle || null;
+
+    const uniqueReceiverIds = Array.from(new Set(messageList.map(msg => msg.receiverId)));
+    const receiverUsers = await db
+      .select()
+      .from(users)
+      .where(inArray(users.id, uniqueReceiverIds));
+
+    const receiverUsersMap = new Map(receiverUsers.map(u => [u.id, u]));
+
+    const messagesWithUsers: MessageWithUsers[] = messageList.map(msg => {
+      const senderName = `${msg.senderFirstName || ''} ${msg.senderLastName || ''}`.trim() || 'Unknown';
+      const receiverUser = receiverUsersMap.get(msg.receiverId);
+      const receiverName = receiverUser 
+        ? `${receiverUser.firstName || ''} ${receiverUser.lastName || ''}`.trim() || receiverUser.email
+        : 'Unknown';
+
+      return {
+        id: msg.id,
+        senderId: msg.senderId,
+        receiverId: msg.receiverId,
+        content: msg.content,
+        leadId: msg.leadId,
+        isRead: msg.isRead,
+        createdAt: msg.createdAt,
+        senderName,
+        senderProfileImageUrl: msg.senderProfileImageUrl,
+        receiverName,
+        receiverProfileImageUrl: receiverUser?.profileImageUrl || null,
+        leadTitle,
+      };
+    });
+
+    return messagesWithUsers;
   }
 
   async getOverviewStats(userId?: string, userRole?: string) {

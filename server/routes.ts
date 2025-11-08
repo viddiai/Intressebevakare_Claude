@@ -1409,6 +1409,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/leads/:id/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const lead = await storage.getLead(req.params.id);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+
+      if (user.role !== "MANAGER" && lead.assignedToId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const leadMessages = await storage.getLeadMessages(req.params.id);
+      res.json(leadMessages);
+    } catch (error) {
+      console.error("Error fetching lead messages:", error);
+      res.status(500).json({ message: "Misslyckades att hämta meddelanden" });
+    }
+  });
+
   // Messages routes
   app.get('/api/messages/conversations', isAuthenticated, async (req: any, res) => {
     try {

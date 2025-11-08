@@ -17,7 +17,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import type { Lead, LeadNote, LeadTask, AuditLog, User } from "@shared/schema";
+import type { Lead, LeadNote, LeadTask, AuditLog, User, MessageWithUsers } from "@shared/schema";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
 import { formatInTimeZone, toDate } from "date-fns-tz";
@@ -77,6 +77,11 @@ export default function LeadDetail() {
 
   const { data: activity = [] } = useQuery<AuditLog[]>({
     queryKey: [`/api/leads/${id}/activity`],
+    enabled: !!id,
+  });
+
+  const { data: leadMessages = [] } = useQuery<MessageWithUsers[]>({
+    queryKey: [`/api/leads/${id}/messages`],
     enabled: !!id,
   });
 
@@ -261,6 +266,7 @@ export default function LeadDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/unread-count"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/leads/${id}/messages`] });
       toast({
         title: "Meddelande skickat",
         description: "Meddelandet har skickats",
@@ -858,6 +864,51 @@ export default function LeadDetail() {
                     )}
                     <p className="text-xs text-muted-foreground mt-1" data-testid={`text-activity-date-${log.id}`}>
                       {formatInTimeZone(new Date(log.createdAt), SWEDISH_TZ, "d MMM yyyy HH:mm", { locale: sv })}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card data-testid="card-messages">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+          <CardTitle>Meddelanden</CardTitle>
+          <Button
+            size="sm"
+            onClick={() => {
+              if (lead?.assignedToId && lead.assignedToId !== currentUser?.id) {
+                handleOpenMessageDialog(lead.assignedToId);
+              } else {
+                setMessageDialogOpen(true);
+              }
+            }}
+            data-testid="button-open-message-dialog"
+          >
+            <MessageCircle className="w-4 h-4 mr-2" />
+            Nytt meddelande
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {leadMessages.length === 0 ? (
+              <p className="text-sm text-muted-foreground" data-testid="text-no-messages">Inga meddelanden ännu</p>
+            ) : (
+              leadMessages.map((message) => (
+                <div key={message.id} className="flex gap-3 p-3 bg-muted rounded-md" data-testid={`message-${message.id}`}>
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <p className="text-sm font-medium" data-testid={`text-message-sender-${message.id}`}>
+                        {message.senderName} → {message.receiverName}
+                      </p>
+                      <p className="text-xs text-muted-foreground whitespace-nowrap" data-testid={`text-message-date-${message.id}`}>
+                        {formatInTimeZone(new Date(message.createdAt), SWEDISH_TZ, "d MMM yyyy HH:mm", { locale: sv })}
+                      </p>
+                    </div>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap" data-testid={`text-message-content-${message.id}`}>
+                      {message.content}
                     </p>
                   </div>
                 </div>
