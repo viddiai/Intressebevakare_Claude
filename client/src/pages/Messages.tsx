@@ -258,37 +258,48 @@ export default function Messages() {
                     return (
                       <div
                         key={message.id}
-                        className={`flex flex-col ${isOwnMessage ? "items-end" : "items-start"}`}
+                        className={`flex gap-2 ${isOwnMessage ? "flex-row-reverse" : "flex-row"}`}
                         data-testid={`message-${message.id}`}
                       >
-                        {/* Sender name */}
-                        <p className="text-xs text-muted-foreground mb-1 px-1">
-                          {message.senderName}
-                        </p>
+                        {/* Sender avatar */}
+                        <Avatar className="h-8 w-8 flex-shrink-0">
+                          <AvatarImage src={message.senderProfileImageUrl || undefined} />
+                          <AvatarFallback className="text-xs">
+                            {getInitials(message.senderName)}
+                          </AvatarFallback>
+                        </Avatar>
                         
-                        {/* Message bubble */}
-                        <div
-                          className={`max-w-[85%] sm:max-w-xs md:max-w-sm lg:max-w-md ${
-                            isOwnMessage
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
-                          } rounded-lg p-3`}
-                        >
-                          <p className="text-xs text-muted-foreground mb-2">
-                            Till: {message.receiverName}
+                        {/* Message content */}
+                        <div className={`flex flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
+                          {/* Sender name */}
+                          <p className="text-xs text-muted-foreground mb-1 px-1">
+                            {message.senderName}
                           </p>
-                          <p className="break-words whitespace-pre-wrap">
-                            {message.content}
-                          </p>
-                          <p
-                            className={`text-xs mt-2 ${
+                          
+                          {/* Message bubble */}
+                          <div
+                            className={`max-w-[85%] sm:max-w-xs md:max-w-sm lg:max-w-md ${
                               isOwnMessage
-                                ? "text-primary-foreground/70"
-                                : "text-muted-foreground"
-                            }`}
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted"
+                            } rounded-lg p-3`}
                           >
-                            {formatMessageTime(message.createdAt)}
-                          </p>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              Till: {message.receiverName}
+                            </p>
+                            <p className="break-words whitespace-pre-wrap">
+                              {message.content}
+                            </p>
+                            <p
+                              className={`text-xs mt-2 ${
+                                isOwnMessage
+                                  ? "text-primary-foreground/70"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              {formatMessageTime(message.createdAt)}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     );

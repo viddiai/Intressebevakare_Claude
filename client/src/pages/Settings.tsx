@@ -21,6 +21,7 @@ import type { SellerPool, StatusChangeHistoryWithUser } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";
 import { Building2 } from "lucide-react";
+import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 
 // Separate component for seller pool status to comply with hooks rules
 function SellerPoolStatus({ pool, userId }: { pool: SellerPool; userId: string }) {
@@ -121,10 +122,6 @@ function SellerPoolStatus({ pool, userId }: { pool: SellerPool; userId: string }
 const profileSchema = z.object({
   firstName: z.string().min(1, "Förnamn krävs").optional(),
   lastName: z.string().min(1, "Efternamn krävs").optional(),
-  profileImageUrl: z.string().trim().optional().nullable().refine(
-    (val) => !val || val === "" || z.string().url().safeParse(val).success,
-    { message: "Ogiltig URL" }
-  ),
 });
 
 const passwordSchema = z.object({
@@ -165,7 +162,6 @@ export default function Settings() {
     defaultValues: {
       firstName: user?.firstName || "",
       lastName: user?.lastName || "",
-      profileImageUrl: user?.profileImageUrl || "",
     },
   });
 
@@ -315,12 +311,12 @@ export default function Settings() {
   };
 
   const onProfileSubmit = (data: z.infer<typeof profileSchema>) => {
-    // Convert empty string or undefined to null for profileImageUrl
-    const cleanedData = {
-      ...data,
-      profileImageUrl: !data.profileImageUrl || data.profileImageUrl.trim() === "" ? null : data.profileImageUrl.trim(),
-    };
-    updateProfileInfoMutation.mutate(cleanedData);
+    updateProfileInfoMutation.mutate(data);
+  };
+
+  const handleImageUploadSuccess = (imageUrl: string) => {
+    // Invalidate queries to refresh user data
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
   };
 
   const onPasswordSubmit = (data: z.infer<typeof passwordSchema>) => {
@@ -432,77 +428,59 @@ export default function Settings() {
           <CardDescription>Uppdatera ditt namn och profilbild</CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...profileForm}>
-            <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={profileForm.watch("profileImageUrl") || user.profileImageUrl || undefined} />
-                  <AvatarFallback className="text-lg">{getUserInitials()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground">{user.email}</p>
+          <div className="space-y-6">
+            <ProfileImageUpload
+              currentImageUrl={user.profileImageUrl}
+              userInitials={getUserInitials()}
+              userId={user.id}
+              onUploadSuccess={handleImageUploadSuccess}
+            />
+
+            <Form {...profileForm}>
+              <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={profileForm.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Förnamn</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Ditt förnamn" data-testid="input-firstname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={profileForm.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Efternamn</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Ditt efternamn" data-testid="input-lastname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-              </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  control={profileForm.control}
-                  name="firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Förnamn</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Ditt förnamn" data-testid="input-firstname" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                <Button
+                  type="submit"
+                  disabled={updateProfileInfoMutation.isPending}
+                  data-testid="button-save-profileinfo"
+                >
+                  {updateProfileInfoMutation.isPending && (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   )}
-                />
-
-                <FormField
-                  control={profileForm.control}
-                  name="lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Efternamn</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Ditt efternamn" data-testid="input-lastname" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={profileForm.control}
-                name="profileImageUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Profilbild URL</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="https://exempel.se/bild.jpg" data-testid="input-profileimage" />
-                    </FormControl>
-                    <FormDescription>
-                      Ange en URL till din profilbild
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Button
-                type="submit"
-                disabled={updateProfileInfoMutation.isPending}
-                data-testid="button-save-profileinfo"
-              >
-                {updateProfileInfoMutation.isPending && (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                )}
-                Spara profilinformation
-              </Button>
-            </form>
-          </Form>
+                  Spara namn
+                </Button>
+              </form>
+            </Form>
+          </div>
         </CardContent>
       </Card>
 

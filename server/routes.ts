@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, sanitizeUser } from "./localAuth";
@@ -11,14 +12,57 @@ import { sendPasswordResetEmail } from "./email";
 import passport from "passport";
 import crypto from "crypto";
 import { ImapFlow } from "imapflow";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 // Helper function to generate a secure random token
 function generateResetToken(): string {
   return crypto.randomBytes(32).toString('hex');
 }
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(process.cwd(), 'uploads', 'profile-images');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for profile image uploads
+const profileImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'profile-' + uniqueSuffix + ext);
+  }
+});
+
+const profileImageUpload = multer({
+  storage: profileImageStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Endast JPG och PNG bilder är tillåtna'));
+    }
+  }
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
+
+  // Serve uploaded profile images
+  app.use('/uploads/profile-images', (req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  });
+  app.use('/uploads/profile-images', express.static(uploadsDir));
 
   // Register endpoint
   app.post('/api/register', async (req, res) => {
@@ -482,6 +526,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Upload profile image endpoint
+  app.post('/api/users/:id/profile-image', isAuthenticated, profileImageUpload.single('profileImage'), async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const targetUserId = req.params.id;
+
+      if (userId !== targetUserId) {
+        // Clean up uploaded file if user doesn't match
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(403).json({ message: "Du kan bara uppdatera din egen profilbild" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "Ingen fil uppladdad" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        // Clean up uploaded file if user doesn't exist
+        fs.unlinkSync(req.file.path);
+        return res.status(404).json({ message: "Användare hittades inte" });
+      }
+
+      // Delete old profile image if it exists and is a local file
+      if (user.profileImageUrl && user.profileImageUrl.startsWith('/uploads/profile-images/')) {
+        // Remove leading slash to create correct relative path
+        const relativePath = user.profileImageUrl.replace(/^\//, '');
+        const oldImagePath = path.join(process.cwd(), relativePath);
+        if (fs.existsSync(oldImagePath)) {
+          try {
+            fs.unlinkSync(oldImagePath);
+            console.log(`✅ Deleted old profile image: ${oldImagePath}`);
+          } catch (err) {
+            console.error('❌ Failed to delete old profile image:', err);
+          }
+        } else {
+          console.log(`⚠️ Old profile image not found at: ${oldImagePath}`);
+        }
+      }
+
+      // Update user's profile image URL
+      const profileImageUrl = `/uploads/profile-images/${req.file.filename}`;
+      const updatedUser = await storage.updateUser(userId, { profileImageUrl });
+
+      res.json({
+        message: "Profilbild uppladdad",
+        profileImageUrl,
+        user: sanitizeUser(updatedUser)
+      });
+    } catch (error: any) {
+      // Clean up uploaded file on error
+      if (req.file) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (err) {
+          console.error('Failed to delete uploaded file:', err);
+        }
+      }
+      console.error("Error uploading profile image:", error);
+      res.status(500).json({ message: error.message || "Misslyckades att ladda upp profilbild" });
     }
   });
 
