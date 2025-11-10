@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Users, Clock } from "lucide-react";
+import { Loader2, Users, Clock, ChevronUp, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import type { SellerPool, User, StatusChangeHistoryWithUser } from "@shared/schema";
@@ -16,7 +16,21 @@ interface SellerPoolWithUser extends SellerPool {
 }
 
 // Separate component for pool item to comply with hooks rules
-function PoolItem({ pool, resource }: { pool: SellerPool; resource?: User }) {
+function PoolItem({ 
+  pool, 
+  resource, 
+  canMoveUp, 
+  canMoveDown, 
+  onMoveUp, 
+  onMoveDown 
+}: { 
+  pool: SellerPool; 
+  resource?: User;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
   const { toast } = useToast();
   
   const { data: history = [] } = useQuery<StatusChangeHistoryWithUser[]>({
@@ -50,7 +64,7 @@ function PoolItem({ pool, resource }: { pool: SellerPool; resource?: User }) {
       className="p-3 bg-muted rounded-md space-y-2"
       data-testid={`pool-item-${pool.id}`}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex-1">
           <p className="font-medium text-sm" data-testid={`text-seller-name-${pool.id}`}>
             {resource ? `${resource.firstName} ${resource.lastName}` : "Okänd resurs"}
@@ -82,17 +96,43 @@ function PoolItem({ pool, resource }: { pool: SellerPool; resource?: User }) {
             )}
           </div>
         </div>
-        <Switch
-          checked={pool.isEnabled}
-          onCheckedChange={(checked) => {
-            togglePoolMutation.mutate({
-              poolId: pool.id,
-              isEnabled: checked,
-            });
-          }}
-          disabled={togglePoolMutation.isPending}
-          data-testid={`switch-pool-${pool.id}`}
-        />
+        
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onMoveUp}
+              disabled={!canMoveUp}
+              data-testid={`button-move-up-${pool.id}`}
+              className="h-6 w-6"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onMoveDown}
+              disabled={!canMoveDown}
+              data-testid={`button-move-down-${pool.id}`}
+              className="h-6 w-6"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </div>
+          
+          <Switch
+            checked={pool.isEnabled}
+            onCheckedChange={(checked) => {
+              togglePoolMutation.mutate({
+                poolId: pool.id,
+                isEnabled: checked,
+              });
+            }}
+            disabled={togglePoolMutation.isPending}
+            data-testid={`switch-pool-${pool.id}`}
+          />
+        </div>
       </div>
       
       {latestChange && (
@@ -116,6 +156,7 @@ function PoolItem({ pool, resource }: { pool: SellerPool; resource?: User }) {
 
 export default function SellerPools() {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data: sellerPools = [], isLoading } = useQuery<SellerPoolWithUser[]>({
     queryKey: ["/api/seller-pools"],
@@ -123,6 +164,26 @@ export default function SellerPools() {
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: async ({ updates }: { updates: Array<{ id: string; sortOrder: number }> }) => {
+      return apiRequest("PATCH", "/api/seller-pools/reorder", { updates });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/seller-pools"] });
+      toast({
+        title: "Ordning uppdaterad",
+        description: "Sorteringsordningen har sparats.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Fel",
+        description: "Kunde inte uppdatera sorteringsordningen. Försök igen.",
+        variant: "destructive",
+      });
+    },
   });
 
   if (user?.role !== "MANAGER") {
@@ -144,13 +205,43 @@ export default function SellerPools() {
   }
 
   const poolsByFacility = {
-    Falkenberg: sellerPools.filter((pool) => pool.anlaggning === "Falkenberg"),
-    Göteborg: sellerPools.filter((pool) => pool.anlaggning === "Göteborg"),
-    Trollhättan: sellerPools.filter((pool) => pool.anlaggning === "Trollhättan"),
+    Falkenberg: sellerPools.filter((pool) => pool.anlaggning === "Falkenberg").sort((a, b) => a.sortOrder - b.sortOrder),
+    Göteborg: sellerPools.filter((pool) => pool.anlaggning === "Göteborg").sort((a, b) => a.sortOrder - b.sortOrder),
+    Trollhättan: sellerPools.filter((pool) => pool.anlaggning === "Trollhättan").sort((a, b) => a.sortOrder - b.sortOrder),
   };
 
   const getUserById = (userId: string) => {
     return users.find((u) => u.id === userId);
+  };
+
+  const handleMoveUp = (facility: string, currentIndex: number) => {
+    const pools = poolsByFacility[facility as keyof typeof poolsByFacility];
+    if (currentIndex <= 0 || currentIndex >= pools.length) return;
+
+    const currentPool = pools[currentIndex];
+    const previousPool = pools[currentIndex - 1];
+
+    const updates = [
+      { id: currentPool.id, sortOrder: previousPool.sortOrder },
+      { id: previousPool.id, sortOrder: currentPool.sortOrder },
+    ];
+
+    reorderMutation.mutate({ updates });
+  };
+
+  const handleMoveDown = (facility: string, currentIndex: number) => {
+    const pools = poolsByFacility[facility as keyof typeof poolsByFacility];
+    if (currentIndex < 0 || currentIndex >= pools.length - 1) return;
+
+    const currentPool = pools[currentIndex];
+    const nextPool = pools[currentIndex + 1];
+
+    const updates = [
+      { id: currentPool.id, sortOrder: nextPool.sortOrder },
+      { id: nextPool.id, sortOrder: currentPool.sortOrder },
+    ];
+
+    reorderMutation.mutate({ updates });
   };
 
   return (
@@ -179,11 +270,17 @@ export default function SellerPools() {
                   Inga resurser i denna pool
                 </p>
               ) : (
-                pools
-                  .sort((a, b) => a.sortOrder - b.sortOrder)
-                  .map((pool) => (
-                    <PoolItem key={pool.id} pool={pool} resource={getUserById(pool.userId)} />
-                  ))
+                pools.map((pool, index) => (
+                  <PoolItem 
+                    key={pool.id} 
+                    pool={pool} 
+                    resource={getUserById(pool.userId)}
+                    canMoveUp={index > 0}
+                    canMoveDown={index < pools.length - 1}
+                    onMoveUp={() => handleMoveUp(facility, index)}
+                    onMoveDown={() => handleMoveDown(facility, index)}
+                  />
+                ))
               )}
             </CardContent>
           </Card>
