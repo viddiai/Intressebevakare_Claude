@@ -16,6 +16,7 @@ The frontend uses React with TypeScript, Vite, Wouter for routing, and TanStack 
 - **Lead Acceptance:** Assigned sellers can accept/decline leads via buttons in list and detail views, with proper permission checks.
 - **Lead Reassignment:** Sellers can reassign pending leads to others, triggering a database transaction for atomicity and audit logging.
 - **Seller Pool Integration:** Disabling email notifications automatically disables associated seller pools to prevent lead assignment. Additionally, sellers cannot enable availability unless email notifications are active, enforced by both frontend and backend validation with user-friendly error messages and visual highlighting.
+- **Seller Pool Reordering:** Managers can manually reorder sellers within each facility's resource pool using up/down arrow buttons. Custom ordering overrides the default alphabetical/numerical sort and is persisted in the database, affecting the round-robin assignment sequence.
 - **Internal Messaging System:** Lead-based conversation grouping, displaying lead title, participants, last message, timestamp, and unread counts. Supports real-time polling and clickable lead references. All UI text is in Swedish.
 
 #### Backend Architecture
@@ -37,6 +38,7 @@ The API includes public endpoints for contact forms and Bytbil webhooks, authent
 - **Overview KPI Endpoint:** `GET /api/overview/stats` provides real-time, role-filtered KPI metrics.
 - **Lead Acceptance Endpoints:** `POST /api/leads/:id/accept`, `POST /api/leads/:id/decline`, and email-based `GET /api/leads/:id/email-accept`, `GET /api/leads/:id/email-decline`.
 - **Lead Reassignment Endpoints:** `GET /api/users/sellers` and `POST /api/leads/:id/reassign-to-seller`.
+- **Seller Pool Reordering Endpoint:** `PATCH /api/seller-pools/reorder` allows managers to bulk update sort orders for seller pools.
 - **Message Endpoints:** `GET /api/messages/conversations`, `GET /api/messages/lead/:leadId`, `POST /api/messages`, `GET /api/messages/unread-count`.
 
 #### Authentication and Authorization
