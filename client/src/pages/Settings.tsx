@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Loader2, Upload, Lock, Power, AlertCircle, Clock, Mail, CheckCircle, XCircle, UserX, TimerOff, BarChart3 } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -24,7 +24,17 @@ import { Building2 } from "lucide-react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 
 // Separate component for seller pool status to comply with hooks rules
-function SellerPoolStatus({ pool, userId }: { pool: SellerPool; userId: string }) {
+function SellerPoolStatus({ 
+  pool, 
+  userId, 
+  emailNotificationsEnabled,
+  onEmailNotificationRequired 
+}: { 
+  pool: SellerPool; 
+  userId: string;
+  emailNotificationsEnabled: boolean;
+  onEmailNotificationRequired: () => void;
+}) {
   const { toast } = useToast();
   
   const { data: history = [] } = useQuery<StatusChangeHistoryWithUser[]>({
@@ -46,12 +56,21 @@ function SellerPoolStatus({ pool, userId }: { pool: SellerPool; userId: string }
         description: "Din tillgänglighetsstatus har ändrats.",
       });
     },
-    onError: () => {
-      toast({
-        title: "Fel",
-        description: "Kunde inte uppdatera status. Försök igen.",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      if (error?.code === "EMAIL_NOTIFICATIONS_REQUIRED") {
+        toast({
+          title: "E-postnotifikationer krävs",
+          description: error.message || "Du måste aktivera e-postnotifikationer för att kunna ta emot leads",
+          variant: "destructive",
+        });
+        onEmailNotificationRequired();
+      } else {
+        toast({
+          title: "Fel",
+          description: "Kunde inte uppdatera status. Försök igen.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -83,6 +102,17 @@ function SellerPoolStatus({ pool, userId }: { pool: SellerPool; userId: string }
           id={`pool-status-${pool.id}`}
           checked={pool.isEnabled}
           onCheckedChange={(checked) => {
+            // Prevent enabling if email notifications are disabled
+            if (checked && !emailNotificationsEnabled) {
+              toast({
+                title: "E-postnotifikationer krävs",
+                description: "Du måste aktivera e-postnotifikationer för att kunna ta emot leads",
+                variant: "destructive",
+              });
+              onEmailNotificationRequired();
+              return;
+            }
+            
             updateSellerPoolStatusMutation.mutate({
               poolId: pool.id as any,
               isEnabled: checked,
@@ -148,6 +178,10 @@ export default function Settings() {
 
   // State for managing user's facilities
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
+  
+  // Ref for email notifications card to enable scrolling/highlighting
+  const emailNotificationsRef = useRef<HTMLDivElement>(null);
+  const [highlightEmailNotifications, setHighlightEmailNotifications] = useState(false);
 
   // Update selected facilities when pools are loaded
   useEffect(() => {
@@ -324,6 +358,17 @@ export default function Settings() {
       oldPassword: data.oldPassword,
       newPassword: data.newPassword,
     });
+  };
+
+  const handleEmailNotificationRequired = () => {
+    // Scroll to and highlight email notifications section
+    emailNotificationsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightEmailNotifications(true);
+    
+    // Remove highlight after animation
+    setTimeout(() => {
+      setHighlightEmailNotifications(false);
+    }, 3000);
   };
 
   const getUserInitials = () => {
@@ -606,7 +651,13 @@ export default function Settings() {
           </CardHeader>
           <CardContent className="space-y-6">
             {userPools.map((pool) => (
-              <SellerPoolStatus key={pool.id} pool={pool} userId={user?.id || ""} />
+              <SellerPoolStatus 
+                key={pool.id} 
+                pool={pool} 
+                userId={user?.id || ""} 
+                emailNotificationsEnabled={emailNotificationsEnabled}
+                onEmailNotificationRequired={handleEmailNotificationRequired}
+              />
             ))}
 
             <div className="flex items-start gap-2 text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/30 p-3 rounded-md">
@@ -619,7 +670,11 @@ export default function Settings() {
         </Card>
       )}
 
-      <Card>
+      <Card 
+        ref={emailNotificationsRef}
+        className={highlightEmailNotifications ? "ring-2 ring-primary ring-offset-2 transition-all duration-300" : "transition-all duration-300"}
+        data-testid="card-email-notifications"
+      >
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="w-5 h-5" />

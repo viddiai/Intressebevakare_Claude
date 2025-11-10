@@ -1441,6 +1441,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = statusSchema.parse(req.body);
       
+      // Prevent enabling seller pool if email notifications are disabled
+      if (validatedData.isEnabled && !user.emailOnLeadAssignment) {
+        return res.status(400).json({ 
+          message: "Du måste aktivera e-postnotifikationer för att kunna ta emot leads",
+          code: "EMAIL_NOTIFICATIONS_REQUIRED"
+        });
+      }
+      
       // Get the seller pool to verify ownership
       const allPools = await storage.getSellerPools();
       const pool = allPools.find(p => p.id === req.params.id);
