@@ -72,6 +72,7 @@ export interface IStorage {
   updateSellerPool(id: string, data: Partial<InsertSellerPool>): Promise<SellerPool | undefined>;
   deleteSellerPool(id: string): Promise<void>;
   syncUserFacilities(userId: string, anlaggningar: string[]): Promise<void>;
+  bulkUpdateSellerPoolOrder(updates: Array<{ id: string; sortOrder: number }>): Promise<void>;
   
   createStatusChangeHistory(history: InsertStatusChangeHistory): Promise<StatusChangeHistory>;
   getStatusChangeHistoryBySellerPool(sellerPoolId: string): Promise<StatusChangeHistoryWithUser[]>;
@@ -631,6 +632,16 @@ export class DbStorage implements IStorage {
     // Remove old facility associations
     for (const pool of facilitiesToRemove) {
       await this.deleteSellerPool(pool.id);
+    }
+  }
+
+  async bulkUpdateSellerPoolOrder(updates: Array<{ id: string; sortOrder: number }>): Promise<void> {
+    // Update each seller pool's sort order
+    for (const update of updates) {
+      await db
+        .update(sellerPools)
+        .set({ sortOrder: update.sortOrder })
+        .where(eq(sellerPools.id, update.id));
     }
   }
 

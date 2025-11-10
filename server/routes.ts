@@ -1336,6 +1336,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/seller-pools/reorder', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.role !== "MANAGER") {
+        return res.status(403).json({ message: "Only managers can reorder seller pools" });
+      }
+
+      const reorderSchema = z.object({
+        updates: z.array(z.object({
+          id: z.string(),
+          sortOrder: z.number(),
+        })),
+      });
+
+      const validatedData = reorderSchema.parse(req.body);
+      
+      await storage.bulkUpdateSellerPoolOrder(validatedData.updates);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error reordering seller pools:", error);
+      res.status(500).json({ message: "Failed to reorder seller pools" });
+    }
+  });
+
   app.patch('/api/seller-pools/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
