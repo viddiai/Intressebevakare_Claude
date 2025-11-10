@@ -19,8 +19,8 @@ interface FilterBarProps {
   sellerFilter?: string;
   onSellerChange?: (value: string) => void;
   sellers?: Array<{ id: string; firstName: string | null; lastName: string | null }>;
-  showOnlyTasksToday?: boolean;
-  onShowOnlyTasksTodayChange?: (value: boolean) => void;
+  showOnlyWithNextTask?: boolean;
+  onShowOnlyWithNextTaskChange?: (value: boolean) => void;
 }
 
 export default function FilterBar({
@@ -33,8 +33,8 @@ export default function FilterBar({
   sellerFilter = "all",
   onSellerChange,
   sellers = [],
-  showOnlyTasksToday = false,
-  onShowOnlyTasksTodayChange,
+  showOnlyWithNextTask = false,
+  onShowOnlyWithNextTaskChange,
 }: FilterBarProps) {
   const sortedSellers = [...sellers].sort((a, b) => {
     const nameA = a.firstName || "";
@@ -98,14 +98,14 @@ export default function FilterBar({
         </Select>
 
         <Button 
-          variant={showOnlyTasksToday ? "default" : "outline"} 
+          variant={showOnlyWithNextTask ? "default" : "outline"} 
           className="gap-2 w-full"
-          onClick={() => onShowOnlyTasksTodayChange?.(!showOnlyTasksToday)}
-          data-testid="button-filter-tasks-today"
+          onClick={() => onShowOnlyWithNextTaskChange?.(!showOnlyWithNextTask)}
+          data-testid="button-filter-next-task"
         >
           <CalendarCheck className="w-4 h-4" />
-          <span className="hidden sm:inline">Uppgifter idag</span>
-          <span className="sm:hidden">Idag</span>
+          <span className="hidden sm:inline">Nästa uppgift</span>
+          <span className="sm:hidden">Nästa</span>
         </Button>
       </div>
     </div>

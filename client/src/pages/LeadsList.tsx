@@ -14,7 +14,6 @@ import { Plus, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { formatInTimeZone } from "date-fns-tz";
-import { isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { LeadWithAssignedTo, User } from "@shared/schema";
 
@@ -26,7 +25,7 @@ export default function LeadsList() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [sellerFilter, setSellerFilter] = useState("all");
-  const [showOnlyTasksToday, setShowOnlyTasksToday] = useState(false);
+  const [showOnlyWithNextTask, setShowOnlyWithNextTask] = useState(false);
   const [messageDialogOpen, setMessageDialogOpen] = useState(false);
   const [messageContent, setMessageContent] = useState("");
   const [messageRecipientId, setMessageRecipientId] = useState<string | null>(null);
@@ -212,10 +211,10 @@ export default function LeadsList() {
         (sellerFilter === "unassigned" && !lead.assignedToId) ||
         (sellerFilter !== "unassigned" && lead.assignedToId === sellerFilter);
 
-      const matchesTaskToday = !showOnlyTasksToday || 
-        (lead.nextTask && isToday(new Date(lead.nextTask.dueDate)));
+      const matchesNextTask = !showOnlyWithNextTask || 
+        (lead.nextTask !== null && lead.nextTask !== undefined);
 
-      return matchesTab && matchesSearch && matchesSource && matchesLocation && matchesSeller && matchesTaskToday;
+      return matchesTab && matchesSearch && matchesSource && matchesLocation && matchesSeller && matchesNextTask;
     });
 
     return filtered.sort((a, b) => {
@@ -236,7 +235,7 @@ export default function LeadsList() {
       }
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [leads, activeTab, search, sourceFilter, locationFilter, sellerFilter, showOnlyTasksToday]);
+  }, [leads, activeTab, search, sourceFilter, locationFilter, sellerFilter, showOnlyWithNextTask]);
 
   const counts = useMemo(() => {
     if (!leads) return { all: 0, new: 0, contacted: 0, quote: 0, won: 0, lost: 0 };
@@ -292,8 +291,8 @@ export default function LeadsList() {
         sellerFilter={sellerFilter}
         onSellerChange={setSellerFilter}
         sellers={users || []}
-        showOnlyTasksToday={showOnlyTasksToday}
-        onShowOnlyTasksTodayChange={setShowOnlyTasksToday}
+        showOnlyWithNextTask={showOnlyWithNextTask}
+        onShowOnlyWithNextTaskChange={setShowOnlyWithNextTask}
       />
 
       <div className="space-y-4">
