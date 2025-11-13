@@ -64,44 +64,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   app.use('/uploads/profile-images', express.static(uploadsDir));
 
-  // Register endpoint
-  app.post('/api/register', async (req, res) => {
-    try {
-      const validatedData = registerUserSchema.parse(req.body);
-      
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(validatedData.email);
-      if (existingUser) {
-        return res.status(400).json({ message: "En användare med denna e-postadress finns redan" });
-      }
-
-      // Hash password
-      const passwordHash = await hashPassword(validatedData.password);
-
-      // Create user
-      const user = await storage.createUser({
-        email: validatedData.email,
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        passwordHash,
-      });
-
-      // Log the user in
-      req.login(user, (err) => {
-        if (err) {
-          return res.status(500).json({ message: "Registrering lyckades men inloggning misslyckades" });
-        }
-        res.json({ message: "Registrering lyckades", user: sanitizeUser(user) });
-      });
-    } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Valideringsfel", errors: error.errors });
-      }
-      console.error("Error during registration:", error);
-      res.status(500).json({ message: "Registrering misslyckades" });
-    }
-  });
-
   // Login endpoint
   app.post('/api/login', (req, res, next) => {
     passport.authenticate('local', (err: any, user: any, info: any) => {

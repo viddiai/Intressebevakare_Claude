@@ -150,13 +150,6 @@ export default function Login() {
                 </Button>
               </form>
             </Form>
-
-            <div className="mt-4 text-center text-sm text-muted-foreground">
-              Har du inget konto?{" "}
-              <Link href="/register" className="text-primary hover:underline" data-testid="link-register">
-                Registrera dig här
-              </Link>
-            </div>
           </CardContent>
         </Card>
       </div>

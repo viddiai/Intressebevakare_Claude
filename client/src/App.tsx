@@ -10,7 +10,6 @@ import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
-import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import PublicContact from "@/pages/PublicContact";
@@ -34,7 +33,6 @@ function AuthenticatedRouter() {
         <Route path="/" component={Landing} />
         <Route path="/kontakt" component={PublicContact} />
         <Route path="/login" component={Login} />
-        <Route path="/register" component={Register} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route component={Landing} />
@@ -59,7 +57,6 @@ function AuthenticatedRouter() {
           <main className="flex-1 overflow-auto">
             <Switch>
               <Route path="/" component={Overview} />
-              <Route path="/register" component={Register} />
               <Route path="/dashboard" component={Dashboard} />
               <Route path="/leads" component={LeadsList} />
               <Route path="/leads/create" component={CreateLead} />
