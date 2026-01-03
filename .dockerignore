@@ -1,0 +1,29 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+server/public
+
+# Environment variables (VIKTIGT - innehåller känsliga lösenord och API-nycklar)
+.env
+.env.*
+
+# Uploaded files
+uploads/
+
+# Temporary files
+/tmp
+*.log
+
+# Replit-specific
+.replit
+.config
+.upm
+
+# OS
+.DS_Store
+
+# Build artifacts
+vite.config.ts.*
+*.tar.gz
